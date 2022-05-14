@@ -1,4 +1,4 @@
-from asyncio import constants
+import locationCurve
 import numpy as np
 import math
 import random
@@ -77,11 +77,11 @@ class Element:
     def update(self):
         self.length = LiteMathTools.distanceBetweenTwoPoint(
             self.node[0].position, self.node[1].position)
-        self.matrix_coordTrans = self.geneMatrix_localToGlobalCoordinateSystem()
+        self.matrix_coordTrans = self.geneMatrix_globalToLocalCoordinateSystem()
         self.matrix_elementL = self.geneElementMatrix_localCoordinateSystem()
         self.matrix_elementG = self.geneElementMatrix_globalCoordinateSystem()
 
-    def geneMatrix_localToGlobalCoordinateSystem(self):
+    def geneMatrix_globalToLocalCoordinateSystem(self):
         '''整体转局部坐标转换矩阵'''
         p1 = self.node[0].position
         p2 = self.node[1].position
@@ -89,6 +89,8 @@ class Element:
         dy = p2[1] - p1[1]
         udx = dx/self.length
         udy = dy/self.length
+        self.rad = math.acos(udx) if udy >= 0 else 2*math.pi - math.acos(udx)
+        self.ang = math.degrees(self.rad)
         matrix = [
             [udx, -udy, 0, 0, 0, 0],
             [udy, udx, 0, 0, 0, 0],
@@ -117,7 +119,7 @@ class Element:
 
     def geneElementMatrix_globalCoordinateSystem(self):
         '''结构坐标系下的单元刚度矩阵'''
-        return self.geneElementMatrix_localCoordinateSystem()*self.geneMatrix_localToGlobalCoordinateSystem().T
+        return np.dot(self.geneMatrix_globalToLocalCoordinateSystem().T, self.geneElementMatrix_localCoordinateSystem())
 
     def geneLockMatrix(self):
         '''锁定矩阵, 将矩阵/向量中, 被锁定的分量设为0'''
@@ -201,7 +203,8 @@ class Struction:
         for node in self.nodeList:
             ind = self.nodeList.index(node)*3
             for i, v in enumerate(node.unlock):
-                self.matrix_totalStiffness[ind+i][ind+i] = 0 if v else 1
+                if not v:
+                    self.matrix_totalStiffness[ind+i][ind+i] = 1
         # 组合荷载矩阵
         self.loadArray = np.zeros(matrixSize)
         for node in self.nodeList:
@@ -210,8 +213,8 @@ class Struction:
                 self.loadArray[ind+i] = v
         self.loadArray = np.dot(self.loadArray, self.matrix_constraint)
         # 解出位移矩阵
-        self.matrix_deformation = np.linalg.solve(
-            self.matrix_totalStiffness, self.loadArray)
+        self.matrix_deformation = np.dot(np.linalg.inv(
+            self.matrix_totalStiffness), self.loadArray)
         return self
 
     def printImage(self):
@@ -225,39 +228,32 @@ class Struction:
         for element in self.elementList:
             n1s = element.node[0].solution[self.id]
             n2s = element.node[1].solution[self.id]
-            elementDeformation = np.concatenate((n1s['deformation'], n2s['deformation']))
-            elementDeformation = np.dot(element.matrix_coordTrans, elementDeformation)
-            elementForce = np.dot(element.matrix_elementL, np.transpose(elementDeformation))
-            print(np.round(np.transpose(elementForce),3))
-
-            
+            elementDeformation = np.concatenate(
+                (n1s['deformation'], n2s['deformation']))
+            elementForce = np.dot(element.matrix_elementG, elementDeformation)
+            elementForceInLocal = np.dot(
+                element.matrix_coordTrans, np.transpose(elementForce))
+            elementForceInLocal = [
+                float(elementForceInLocal[i][0]) for i in range(6)]
+            element.solution[self.id] = {'force': elementForceInLocal}
+            print(elementForceInLocal)
+        # 画图
+        for element in self.elementList:
+            f = element.solution[self.id]['force']
+            enp = element.node[0].position
+            locationCurve.plotBendingMoment(-f[2], f[5], 0,
+                                            element.length, enp[0], enp[1], element.ang, 1)
+        locationCurve.sss()
         return self
 
-# n1 = Node((-1, -2), (0, 0, 0), (23, 11, -23))
-# n2 = Node((3, 1), (1, 1, 0), (23, -124, -23))
-# n3 = Node((7, 9), (0, 0, 0), (13, 17, -243))
-# n4 = Node((-3, -9), (0, 0, 1), (23, 54, -33))
-# e1 = Element((n1, n2), 100, 100)
-# e2 = Element((n1, n3), 100, 100)
-# e3 = Element((n2, n3), 100, 100)
-# e4 = Element((n3, n4), 100, 100)
 n1 = Node((0, 0), (1, 1, 0))
 n2 = Node((2, 0))
-n3 = Node((2, 1), (0, 0, 0), (0, 1, 0))
+n3 = Node((2, 1), (0, 0, 0), (0, -1, 0))
 n4 = Node((3, 1), (0, 1, 0))
-
 e1 = Element((n1, n2))
 e2 = Element((n2, n3))
 e3 = Element((n3, n4))
-
 c1 = Struction(n1)
 
-print([str(i) for i in c1.nodeList])
-print([str(i) for i in c1.elementList])
-a = c1.printImage()
-print(np.round(a.matrix_totalStiffness, decimals=2))
-# for i in a.nodeList:
-#     print(i.solution)
-# print(np.round(a.matrix_deformation, decimals=4))
-# print(a.matrix_constraint)
+c1.printImage()
 
