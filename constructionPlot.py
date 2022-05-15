@@ -183,18 +183,8 @@ class StructionPlot:
             f = FuncLib.quadraticFunctionBy3Points(
                 0, m1, l, m2, l/2, (1/8)*q*l**2+(m1+m2)/2)
         fc = FunctionCurve(f, 0, l, 0.001).setLocal(x, y, a, scale)
-        # 绘图
-        x, y = fc.genelocalCurve()
-        self.axM.plot(x, y, color='#FF0000')
-        # 绘制局部坐标x轴
-        x, y = fc.genelocalXAxis()
-        self.axM.plot(x, y, color='#000000')
-        # 标记极值点
-        for x, y in fc.extremePoints:
-            lx, ly = fc.localToGlobal(x, y)
-            lx0, ly0 = fc.localToGlobal(x, 0)
-            self.axM.plot([lx, lx0], [ly, ly0], color='#E08389', alpha=0.5)
-            self.axM.text(lx, ly, str(round(abs(y), 3)), color='#E08389')
+        self.axPlot(self.axM, fc, ('#000000', '#FF0000',
+                    '#E08389'), 'Bending Moment Diagram')
 
     def plotShearingForce(self, v1, v2, l, x, y, a, scale=0.1):
         '''
@@ -210,18 +200,8 @@ class StructionPlot:
         '''
         f = FuncLib.linearFunctionBy2Points(0, v1, l, v2)
         fc = FunctionCurve(f, 0, l, 0.001).setLocal(x, y, a, scale)
-        # 绘图
-        x, y = fc.genelocalCurve()
-        self.axV.plot(x, y, color='#0070C0')
-        # 绘制局部坐标x轴
-        x, y = fc.genelocalXAxis()
-        self.axV.plot(x, y, color='#000000')
-        # 标记极值点
-        for x, y in fc.extremePoints:
-            lx, ly = fc.localToGlobal(x, y)
-            lx0, ly0 = fc.localToGlobal(x, 0)
-            self.axV.plot([lx, lx0], [ly, ly0], color='#54C1F0', alpha=0.5)
-            self.axV.text(lx, ly, str(round(y, 3)), color='#54C1F0')
+        self.axPlot(self.axV, fc, ('#000000', '#0070C0',
+                    '#54C1F0'), 'Shearing Force Diagram')
 
     def plotAxialForce(self, n, l, x, y, a, scale=0.1):
         '''
@@ -236,18 +216,32 @@ class StructionPlot:
         '''
         f = FuncLib.linearFunctionBy2Points(0, n, l, n)
         fc = FunctionCurve(f, 0, l, 0.001).setLocal(x, y, a, scale)
-        # 绘图
+        self.axPlot(self.axN, fc, ('#000000', '#085820',
+                    '#6BD089'), 'Axial Force Diagram')
+
+    @staticmethod
+    def axPlot(ax: plt.Axes, fc: FunctionCurve, color=('#000000', '#085820', '#6BD089'), title=''):
+        '''
+        在指定ax上画内力图
+        :params ax: 坐标系对象
+        :params fc: 函数曲线对象
+        :params color: 颜色样式(x轴, 内力, 标注)
+        :params title: 坐标系标题
+        '''
+        # 增加坐标系标题
+        ax.set_title(title)
+        # 绘制函数曲线
         x, y = fc.genelocalCurve()
-        self.axN.plot(x, y, color='#085820')
+        ax.plot(x, y, color=color[1])
         # 绘制局部坐标x轴
         x, y = fc.genelocalXAxis()
-        self.axN.plot(x, y, color='#000000')
+        ax.plot(x, y, color=color[0])
         # 标记极值点
         for x, y in fc.extremePoints:
             lx, ly = fc.localToGlobal(x, y)
             lx0, ly0 = fc.localToGlobal(x, 0)
-            self.axN.plot([lx, lx0], [ly, ly0], color='#6BD089', alpha=0.5)
-            self.axN.text(lx, ly, str(round(y, 3)), color='#6BD089')
+            ax.plot([lx, lx0], [ly, ly0], color=color[2], alpha=0.5)
+            ax.text(lx, ly, str(round(y, 3)), color=color[2])
 
     def show(self):
         '''
