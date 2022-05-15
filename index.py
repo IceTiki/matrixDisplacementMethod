@@ -50,14 +50,12 @@ class Node:
         :return: load: Tuple[float, float, float]: 节点荷载(μ, ν, θ)
         '''
         load = self.load
-        # for element in self.element:
-        #     q = element.q
-        #     l = element.length
-        #     eleLoad = np.array([0, q*l/2, q*l**2/12, 0, q*l/2, -q*l**2/12])
-        #     eleLoad = np.dot(element.matrix_coordTrans.T, eleLoad)
-
-        #     load = [a+b for a, b in zip(load, eleLoad)]
-        # print([round(i,2) for i in load])
+        for element in self.element:
+            position = element.node.index(self)
+            eleLoad = [-i for i in element.eleLoad]
+            eleLoad = np.dot(element.matrix_coordTrans.T, eleLoad)
+            eleLoad = eleLoad.tolist()[0][position*3:position*3+3]
+            load = [a+b for a, b in zip(load, eleLoad)]
         return load
 
     def __str__(self):
@@ -67,7 +65,7 @@ class Node:
 class Element:
     '''单元'''
 
-    def __init__(self, node: tuple[Node, Node], elementEA=1, elementEI=1, q=0):
+    def __init__(self, node: tuple[Node, Node], elementEA=10**10, elementEI=1, q=0):
         '''
         :params node: tuple[Node, Node]: 单元连接的节点
         :params elementEA: float: 杆件弹性模量和截面面积的乘积
@@ -79,6 +77,7 @@ class Element:
         self.elementEA = elementEA
         self.elementEI = elementEI
         self.q = q
+        self.eleLoad = None
         self.id = Utils.geneNumId()
         # 节点单元联系
         for n in self.node:
@@ -98,6 +97,7 @@ class Element:
         self.matrix_coordTrans = self.geneMatrix_globalToLocalCoordinateSystem()
         self.matrix_elementL = self.geneElementMatrix_localCoordinateSystem()
         self.matrix_elementG = self.geneElementMatrix_globalCoordinateSystem()
+        self.eleLoad = self.geneElementLoad()
 
     def geneMatrix_globalToLocalCoordinateSystem(self):
         '''整体转局部坐标转换矩阵'''
@@ -156,6 +156,12 @@ class Element:
             [0, 0, 0, 0, 0, n2[2]]
         ]
         return np.matrix(meaningMatrix)
+
+    def geneElementLoad(self):
+        q = self.q
+        l = self.length
+        self.eleLoad = [0, -q*l/2, -q*l**2/12, 0, -q*l/2, q*l**2/12]
+        return self.eleLoad
 
     def __str__(self):
         return f'Element {self.id}'
@@ -257,14 +263,17 @@ class Struction:
             elementForceInLocal = [
                 float(elementForceInLocal[i][0]) for i in range(6)]
             element.solution[self.id] = {'force': elementForceInLocal}
+            elementFullForceInLocal = [
+                a+b for a, b in zip(elementForceInLocal, element.eleLoad)]
+            element.solution[self.id] = {'fullForce': elementFullForceInLocal}
         # 画图
         for element in self.elementList:
-            f = element.solution[self.id]['force']
+            f = element.solution[self.id]['fullForce']
             enp = element.node[0].position
-            locationCurve.plotBendingMoment(f[2], -f[5], 0,
-                                            element.length, enp[0], enp[1], element.ang, 1)
+            locationCurve.plotBendingMoment(f[2], -f[5], element.q,
+                                            element.length, enp[0], enp[1], element.ang, 0.1)
             locationCurve.plotShearingForce(
-                f[1], -f[4], element.length, enp[0], enp[1], element.ang, 1)
+                f[1], -f[4], element.length, enp[0], enp[1], element.ang, 0.1)
         locationCurve.show()
         return self
 
@@ -284,11 +293,11 @@ def lp(a, d=''):
 
 n1 = Node((0, 0), (1, 1, 1))
 n2 = Node((2, 0), (0, 0, 0))
-n3 = Node((2, 1), load=(0, -1, 0))
+n3 = Node((2, 1))
 n4 = Node((3, 1), (1, 1, 1))
-e1 = Element((n1, n2), elementEA=10000)
-e2 = Element((n2, n3), elementEA=10000)
-e3 = Element((n3, n4), elementEA=10000)
+e1 = Element((n1, n2))
+e2 = Element((n2, n3), q=-10)
+e3 = Element((n3, n4))
 c1 = Struction(n1)
 
 c1.calculate()

@@ -46,13 +46,14 @@ class LiteMathTools:
         arr = []
         x = a
         while 1:
-            arr += [x]
+            arr.append(x)
             x += step
             if step == 0:
                 raise Exception('step不应该为0')
-            elif step > 0 and x > b:
+            elif step*(x-b) > 0:
+                arr.append(b)
                 break
-            elif step < 0 and x < b:
+            elif step*(x-b) == 0:
                 break
         return tuple(arr)
 
@@ -171,8 +172,6 @@ class FunctionCurve:
 # ======================================================================
 
 
-
-
 def plotBendingMoment(m1, m2, q, l, x, y, a, scale=0.1):
     '''
     输入若干参数, 绘制弯矩图
@@ -193,7 +192,7 @@ def plotBendingMoment(m1, m2, q, l, x, y, a, scale=0.1):
         '''有均布荷载'''
         f = quadraticFunctionBy3Points(
             0, m1, l, m2, l/2, (1/8)*q*l**2+(m1+m2)/2)
-    fc = FunctionCurve(f, 0, l, 0.001).setLocal(x, y, a, -scale)
+    fc = FunctionCurve(f, 0, l, 0.001).setLocal(x, y, a, scale)
     # 绘图
     x, y = fc.genelocalCurve()
     plt.plot(x, y, color='#FF0000')
@@ -206,6 +205,7 @@ def plotBendingMoment(m1, m2, q, l, x, y, a, scale=0.1):
         lx0, ly0 = fc.localToGlobal(x, 0)
         plt.plot([lx, lx0], [ly, ly0], color='#E08389', alpha=0.5)
         plt.text(lx, ly, str(round(abs(y), 3)), color='#E08389')
+
 
 def plotShearingForce(v1, v2, l, x, y, a, scale=0.1):
     '''
@@ -236,6 +236,8 @@ def plotShearingForce(v1, v2, l, x, y, a, scale=0.1):
         plt.text(lx, ly, str(round(y, 3)), color='#54C1F0')
 
 # 显示图形
+
+
 def show():
     ax = plt.gca()
     ax.set_aspect(1)
