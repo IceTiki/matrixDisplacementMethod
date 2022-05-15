@@ -9,11 +9,17 @@ class Utils:
 
     @staticmethod
     def geneNumId():
+        '''
+        分配整数UUID
+        '''
         Utils.numUuid += 1
         return Utils.numUuid
 
     @staticmethod
     def geneId(len_=16, dict_='0123456789qwertyuiopasdfghjklzxcvbnQWERTYUIOPASDFGHJKLZXCVBNM'):
+        '''
+        生成随机UUID
+        '''
         return str().join(random.choices(dict_, k=len_))
 
 
@@ -26,7 +32,9 @@ class LiteMathTools:
 
 
 class Node:
-    '''节点'''
+    '''
+    节点: 节点是结构中突变点(截面性质改变/存在集中荷载/分布荷载突变处)
+    '''
 
     def __init__(self, position=(0, 0), lock=(0, 0, 0), load=(0, 0, 0)):
         '''
@@ -63,7 +71,9 @@ class Node:
 
 
 class Element:
-    '''单元'''
+    '''
+    单元: 单元是两个节点之间的联系
+    '''
 
     def __init__(self, node: tuple[Node, Node], elementEA=10**10, elementEI=1, q=0):
         '''
@@ -168,21 +178,35 @@ class Element:
 
 
 class Struction:
-    '''整体结构'''
+    '''
+    结构: 由若干有相互联系的节点和单元组成
+    '''
 
     def __init__(self, firstNode: Node):
+        '''
+        输入结构中的任意节点, 自动寻找与之有联系的所有单元和节点
+        '''
         # 生成结构元素列表
         self.id = Utils.geneNumId()
         self.firstNode = firstNode
         self.nodeList: list[Node] = []
         self.elementList: list[Element] = []
+        self.isCalcultated = False
+        self.update()
+
+    def update(self):
+        '''
+        更新自身
+        '''
         self.findStruction()
 
     def __str__(self):
         return f'Struction {self.id}'
 
     def findStruction(self):
-        '''从初始节点开始寻找与其连接的节点和单元'''
+        '''
+        从初始节点开始寻找与其连接的节点和单元, 更新到自身的nodeList和elementList中
+        '''
         nodeList = [self.firstNode]
         elementList = []
         for n in nodeList:
@@ -243,9 +267,15 @@ class Struction:
         # 解出位移矩阵
         self.matrix_deformation = np.dot(np.linalg.inv(
             self.matrix_totalStiffness), self.loadArray)
+        self.isCalcultated = True
         return self
 
-    def printImage(self):
+    def printImage(self, printAxialForce=True, printShearingForce=False, printbendingMoment=False):
+        '''
+        根据计算结果绘制内力图
+        '''
+        if not self.isCalcultated:
+            self.calculate()
         # 将变形保存到节点中
         for node in self.nodeList:
             ind = self.nodeList.index(node)*3
@@ -268,27 +298,20 @@ class Struction:
             element.solution[self.id] = {'fullForce': elementFullForceInLocal}
         # 画图
         for element in self.elementList:
+            '''逐个单元进行绘图'''
             f = element.solution[self.id]['fullForce']
             enp = element.node[0].position
-            locationCurve.plotBendingMoment(f[2], -f[5], element.q,
-                                            element.length, enp[0], enp[1], element.ang, 0.1)
-            locationCurve.plotShearingForce(
-                f[1], -f[4], element.length, enp[0], enp[1], element.ang, 0.1)
+            if printAxialForce:
+                locationCurve.plotShearingForce(
+                    f[0], f[0], element.length, enp[0], enp[1], element.ang, 0.1)
+            if printShearingForce:
+                locationCurve.plotBendingMoment(f[2], -f[5], element.q,
+                                                element.length, enp[0], enp[1], element.ang, 0.1)
+            if printbendingMoment:
+                locationCurve.plotShearingForce(
+                    f[1], -f[4], element.length, enp[0], enp[1], element.ang, 0.1)
         locationCurve.show()
         return self
-
-
-def lp(a, d=''):
-    print((f'>>>>>>>>>>{d}<<<<<<<<<<\n' if d else '') + f'{np.round(a, 2)}')
-
-# n1 = Node((0, 0), (1, 1, 1))
-# n2 = Node((2, 0))
-# n3 = Node((2, 1), load=(0, -1, 0))
-# n4 = Node((3, 1), (1, 1, 1))
-# e1 = Element((n1, n2),elementEA=99)
-# e2 = Element((n2, n3),elementEA=99)
-# e3 = Element((n3, n4),elementEA=99)
-# c1 = Struction(n1)
 
 
 n1 = Node((0, 0), (1, 1, 1))
