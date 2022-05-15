@@ -242,14 +242,6 @@ class Struction:
         self.matrix_deformation = np.dot(np.linalg.inv(
             self.matrix_totalStiffness), self.loadArray)
         self.isCalcultated = True
-        return self
-
-    def printImage(self, printAxialForce=False, printShearingForce=False, printbendingMoment=True):
-        '''
-        根据计算结果绘制内力图
-        '''
-        if not self.isCalcultated:
-            self.calculate()
         # 将变形保存到节点中
         for node in self.nodeList:
             ind = self.nodeList.index(node)*3
@@ -270,32 +262,33 @@ class Struction:
             elementFullForceInLocal = [
                 a+b for a, b in zip(elementForceInLocal, element.eleLoad)]
             element.solution[self.id] = {'fullForce': elementFullForceInLocal}
+        return self
+
+    def printImage(self, scale=(0.1, 0.1, 0.1), printForce=(True, True, True), outputType = 0):
+        '''
+        根据计算结果绘制内力图
+        :params scale: tuple[float, float, float]: 轴力 剪力 弯矩图的放大系数
+        :params printForce: tuple[bool, bool, bool]: 是否绘制(轴力 剪力 弯矩)图
+        '''
+        if not self.isCalcultated:
+            self.calculate()
         # 画图
+        cplot = constructionPlot.StructionPlot(outputType)
         for element in self.elementList:
             '''逐个单元进行绘图'''
             f = element.solution[self.id]['fullForce']
             enp = element.node[0].position
-            if printAxialForce:
-                constructionPlot.plotShearingForce(
-                    f[0], f[0], element.length, enp[0], enp[1], element.ang, 0.1)
-            if printShearingForce:
-                constructionPlot.plotBendingMoment(f[2], -f[5], element.q,
-                                                   element.length, enp[0], enp[1], element.ang, 0.1)
-            if printbendingMoment:
-                constructionPlot.plotShearingForce(
-                    f[1], -f[4], element.length, enp[0], enp[1], element.ang, 0.1)
-        constructionPlot.show()
+            if printForce[0]:
+                '''绘制轴力图'''
+                cplot.plotAxialForce(
+                    f[0], element.length, enp[0], enp[1], element.ang, scale=scale[0])
+            if printForce[1]:
+                '''绘制剪力图'''
+                cplot.plotShearingForce(
+                    f[1], -f[4], element.length, enp[0], enp[1], element.ang, scale=scale[1])
+            if printForce[2]:
+                '''绘制弯矩图'''
+                cplot.plotBendingMoment(f[2], -f[5], element.q,
+                                        element.length, enp[0], enp[1], element.ang, scale=scale[2])
+        cplot.show()
         return self
-
-
-n1 = Node((0, 0), (1, 1, 1))
-n2 = Node((2, 0), (0, 0, 0))
-n3 = Node((2, 1))
-n4 = Node((3, 1), (1, 1, 1))
-e1 = Element((n1, n2))
-e2 = Element((n2, n3), q=-10)
-e3 = Element((n3, n4))
-c1 = Struction(n1)
-
-c1.calculate()
-c1.printImage()

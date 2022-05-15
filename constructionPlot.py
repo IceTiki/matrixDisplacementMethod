@@ -3,24 +3,26 @@ import matplotlib.pyplot as plt
 from liteTools import MathTools
 
 
-def quadraticFunctionBy3Points(x1, y1, x2, y2, x3, y3):
-    '''
-    输入二次函数三个点, 输出该二次函数
-    :return: function: 返回函数f(x)
-    '''
-    b = ((x2**2-x3**2)*(y1-y2)-(x1**2-x2**2)*(y2-y3)) / \
-        ((x2**2-x3**2)*(x1-x2)-(x1**2-x2**2)*(x2-x3))
-    a = (y1-y2-b*(x1-x2))/(x1**2-x2**2)
-    c = y1 - a*x1**2 - b*x1
-    return lambda x: a*x**2 + b*x + c
+class FuncLib:
+    @staticmethod
+    def quadraticFunctionBy3Points(x1, y1, x2, y2, x3, y3):
+        '''
+        输入二次函数三个点, 输出该二次函数
+        :return: function: 返回函数f(x)
+        '''
+        b = ((x2**2-x3**2)*(y1-y2)-(x1**2-x2**2)*(y2-y3)) / \
+            ((x2**2-x3**2)*(x1-x2)-(x1**2-x2**2)*(x2-x3))
+        a = (y1-y2-b*(x1-x2))/(x1**2-x2**2)
+        c = y1 - a*x1**2 - b*x1
+        return lambda x: a*x**2 + b*x + c
 
-
-def linearFunctionBy2Points(x1, y1, x2, y2):
-    '''
-    输一次函数三个点, 输出该一次函数
-    :return: function: 返回函数f(x)
-    '''
-    return lambda x: (y2-y1)/(x2-x1)*(x-x1) + y1
+    @staticmethod
+    def linearFunctionBy2Points(x1, y1, x2, y2):
+        '''
+        输一次函数三个点, 输出该一次函数
+        :return: function: 返回函数f(x)
+        '''
+        return lambda x: (y2-y1)/(x2-x1)*(x-x1) + y1
 
 
 class FunctionCurve:
@@ -132,78 +134,123 @@ class FunctionCurve:
         gy = self.localY + x*xArr[1] + y*yArr[1]*self.yScale
         return (gx, gy)
 
-# ======================================================================
-# ==============================测试用代码==============================
-# ======================================================================
 
-
-def plotBendingMoment(m1, m2, q, l, x, y, a, scale=0.1):
+class StructionPlot:
     '''
-    输入若干参数, 绘制弯矩图
-    :param m1: 左侧支座弯矩
-    :param m2: 右侧支座弯矩
-    :param q: 均布荷载
-    :param l: 杆件长度
-    :param x: 构件起点x坐标
-    :param y: 构件起点y坐标
-    :param a: 构件转角(角度)
-    :param scale: 弯矩放大系数
-    :return (x,y): 整体坐标
+    结构内力图
     '''
-    if q == 0:
-        '''没有均布荷载'''
-        f = linearFunctionBy2Points(0, m1, l, m2)
-    else:
-        '''有均布荷载'''
-        f = quadraticFunctionBy3Points(
-            0, m1, l, m2, l/2, (1/8)*q*l**2+(m1+m2)/2)
-    fc = FunctionCurve(f, 0, l, 0.001).setLocal(x, y, a, scale)
-    # 绘图
-    x, y = fc.genelocalCurve()
-    plt.plot(x, y, color='#FF0000')
-    # 绘制局部坐标x轴
-    x, y = fc.genelocalXAxis()
-    plt.plot(x, y, color='#000000')
-    # 标记极值点
-    for x, y in fc.extremePoints:
-        lx, ly = fc.localToGlobal(x, y)
-        lx0, ly0 = fc.localToGlobal(x, 0)
-        plt.plot([lx, lx0], [ly, ly0], color='#E08389', alpha=0.5)
-        plt.text(lx, ly, str(round(abs(y), 3)), color='#E08389')
 
+    def __init__(self, outputType=0):
+        self.outputType = outputType
+        if outputType == 0:
+            self.figN = plt.figure(figsize=(12, 7))
+            self.axN = self.figN.add_subplot()
+            self.axN.set_aspect(1)
+            self.figV = plt.figure(figsize=(12, 7))
+            self.axV = self.figV.add_subplot()
+            self.axV.set_aspect(1)
+            self.figM = plt.figure(figsize=(12, 7))
+            self.axM = self.figM.add_subplot()
+            self.axM.set_aspect(1)
+        elif outputType == 1:
+            self.fig = plt.figure()
+            self.fig.tight_layout()
+            self.axN = self.fig.add_subplot(131)
+            self.axN.set_aspect(1)
+            self.axV = self.fig.add_subplot(132)
+            self.axV.set_aspect(1)
+            self.axM = self.fig.add_subplot(133)
+            self.axM.set_aspect(1)
 
-def plotShearingForce(v1, v2, l, x, y, a, scale=0.1):
-    '''
-    输入若干参数, 绘制弯矩图
-    :param v1: 左侧支座剪力
-    :param 22: 右侧支座剪力
-    :param l: 杆件长度
-    :param x: 构件起点x坐标
-    :param y: 构件起点y坐标
-    :param a: 构件转角(角度)
-    :param scale: 放大系数
-    :return (x,y): 整体坐标
-    '''
-    '''没有均布荷载'''
-    f = linearFunctionBy2Points(0, v1, l, v2)
-    fc = FunctionCurve(f, 0, l, 0.001).setLocal(x, y, a, scale)
-    # 绘图
-    x, y = fc.genelocalCurve()
-    plt.plot(x, y, color='#0070C0')
-    # 绘制局部坐标x轴
-    x, y = fc.genelocalXAxis()
-    plt.plot(x, y, color='#000000')
-    # 标记极值点
-    for x, y in fc.extremePoints:
-        lx, ly = fc.localToGlobal(x, y)
-        lx0, ly0 = fc.localToGlobal(x, 0)
-        plt.plot([lx, lx0], [ly, ly0], color='#54C1F0', alpha=0.5)
-        plt.text(lx, ly, str(round(y, 3)), color='#54C1F0')
+    def plotBendingMoment(self, m1, m2, q, l, x, y, a, scale=0.1):
+        '''
+        输入若干参数, 绘制弯矩图
+        :param m1: 左侧支座弯矩
+        :param m2: 右侧支座弯矩
+        :param q: 均布荷载
+        :param l: 杆件长度
+        :param x: 构件起点x坐标
+        :param y: 构件起点y坐标
+        :param a: 构件转角(角度)
+        :param scale: 弯矩放大系数
+        :return (x,y): 整体坐标
+        '''
+        if q == 0:
+            '''没有均布荷载'''
+            f = FuncLib.linearFunctionBy2Points(0, m1, l, m2)
+        else:
+            '''有均布荷载'''
+            f = FuncLib.quadraticFunctionBy3Points(
+                0, m1, l, m2, l/2, (1/8)*q*l**2+(m1+m2)/2)
+        fc = FunctionCurve(f, 0, l, 0.001).setLocal(x, y, a, scale)
+        # 绘图
+        x, y = fc.genelocalCurve()
+        self.axM.plot(x, y, color='#FF0000')
+        # 绘制局部坐标x轴
+        x, y = fc.genelocalXAxis()
+        self.axM.plot(x, y, color='#000000')
+        # 标记极值点
+        for x, y in fc.extremePoints:
+            lx, ly = fc.localToGlobal(x, y)
+            lx0, ly0 = fc.localToGlobal(x, 0)
+            self.axM.plot([lx, lx0], [ly, ly0], color='#E08389', alpha=0.5)
+            self.axM.text(lx, ly, str(round(abs(y), 3)), color='#E08389')
 
-# 显示图形
+    def plotShearingForce(self, v1, v2, l, x, y, a, scale=0.1):
+        '''
+        输入若干参数, 绘制剪力图
+        :param v1: 左侧支座剪力
+        :param v2: 右侧支座剪力
+        :param l: 杆件长度
+        :param x: 构件起点x坐标
+        :param y: 构件起点y坐标
+        :param a: 构件转角(角度)
+        :param scale: 放大系数
+        :return (x,y): 整体坐标
+        '''
+        f = FuncLib.linearFunctionBy2Points(0, v1, l, v2)
+        fc = FunctionCurve(f, 0, l, 0.001).setLocal(x, y, a, scale)
+        # 绘图
+        x, y = fc.genelocalCurve()
+        self.axV.plot(x, y, color='#0070C0')
+        # 绘制局部坐标x轴
+        x, y = fc.genelocalXAxis()
+        self.axV.plot(x, y, color='#000000')
+        # 标记极值点
+        for x, y in fc.extremePoints:
+            lx, ly = fc.localToGlobal(x, y)
+            lx0, ly0 = fc.localToGlobal(x, 0)
+            self.axV.plot([lx, lx0], [ly, ly0], color='#54C1F0', alpha=0.5)
+            self.axV.text(lx, ly, str(round(y, 3)), color='#54C1F0')
 
+    def plotAxialForce(self, n, l, x, y, a, scale=0.1):
+        '''
+        输入若干参数, 绘制轴力图
+        :param n: 杆件轴力
+        :param l: 杆件长度
+        :param x: 构件起点x坐标
+        :param y: 构件起点y坐标
+        :param a: 构件转角(角度)
+        :param scale: 放大系数
+        :return (x,y): 整体坐标
+        '''
+        f = FuncLib.linearFunctionBy2Points(0, n, l, n)
+        fc = FunctionCurve(f, 0, l, 0.001).setLocal(x, y, a, scale)
+        # 绘图
+        x, y = fc.genelocalCurve()
+        self.axN.plot(x, y, color='#085820')
+        # 绘制局部坐标x轴
+        x, y = fc.genelocalXAxis()
+        self.axN.plot(x, y, color='#000000')
+        # 标记极值点
+        for x, y in fc.extremePoints:
+            lx, ly = fc.localToGlobal(x, y)
+            lx0, ly0 = fc.localToGlobal(x, 0)
+            self.axN.plot([lx, lx0], [ly, ly0], color='#6BD089', alpha=0.5)
+            self.axN.text(lx, ly, str(round(y, 3)), color='#6BD089')
 
-def show():
-    ax = plt.gca()
-    ax.set_aspect(1)
-    plt.show()
+    def show(self):
+        '''
+        显示图形
+        '''
+        plt.show()
