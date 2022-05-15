@@ -190,7 +190,7 @@ def plotFuncLite(fc: FunctionCurve):
         lx, ly = fc.localToGlobal(x, y)
         lx0, ly0 = fc.localToGlobal(x, 0)
         plt.plot([lx, lx0], [ly, ly0], color='#E08389', alpha=0.5)
-        plt.text(lx, ly, str(round(y, 4)), color='#E08389')
+        plt.text(lx, ly, str(round(y, 3)), color='#E08389')
 
 
 def plotBendingMoment(m1, m2, q, l, x, y, a, scale=0.1):

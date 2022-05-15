@@ -44,6 +44,22 @@ class Node:
         # 解
         self.solution = {}
 
+    def nodeAllLoad(self):
+        '''
+        统计单元传来的等效荷载和节点本身的荷载
+        :return: load: Tuple[float, float, float]: 节点荷载(μ, ν, θ)
+        '''
+        load = self.load
+        # for element in self.element:
+        #     q = element.q
+        #     l = element.length
+        #     eleLoad = np.array([0, q*l/2, q*l**2/12, 0, q*l/2, -q*l**2/12])
+        #     eleLoad = np.dot(element.matrix_coordTrans.T, eleLoad)
+
+        #     load = [a+b for a, b in zip(load, eleLoad)]
+        # print([round(i,2) for i in load])
+        return load
+
     def __str__(self):
         return f'Node {self.id}'
 
@@ -51,16 +67,18 @@ class Node:
 class Element:
     '''单元'''
 
-    def __init__(self, node: tuple[Node, Node], elementEA=1, elementEI=1):
+    def __init__(self, node: tuple[Node, Node], elementEA=1, elementEI=1, q=0):
         '''
         :params node: tuple[Node, Node]: 单元连接的节点
         :params elementEA: float: 杆件弹性模量和截面面积的乘积
         :params elementEI: float: 杆件弹性模量和轴惯性矩的乘积
+        :params q: float: 均布荷载
         '''
         # 基本性质
         self.node = node
         self.elementEA = elementEA
         self.elementEI = elementEI
+        self.q = q
         self.id = Utils.geneNumId()
         # 节点单元联系
         for n in self.node:
@@ -119,7 +137,11 @@ class Element:
 
     def geneElementMatrix_globalCoordinateSystem(self):
         '''结构坐标系下的单元刚度矩阵'''
-        return np.dot(self.geneMatrix_globalToLocalCoordinateSystem().T, self.geneElementMatrix_localCoordinateSystem())
+        self.matrix_elementL = self.geneElementMatrix_localCoordinateSystem()
+        self.matrix_coordTrans = self.geneMatrix_globalToLocalCoordinateSystem()
+        self.matrix_elementG = np.dot(
+            np.dot(self.matrix_coordTrans.T, self.matrix_elementL), self.matrix_coordTrans)
+        return self.matrix_elementG
 
     def geneLockMatrix(self):
         '''锁定矩阵, 将矩阵/向量中, 被锁定的分量设为0'''
@@ -209,7 +231,7 @@ class Struction:
         self.loadArray = np.zeros(matrixSize)
         for node in self.nodeList:
             ind = self.nodeList.index(node)*3
-            for i, v in enumerate(node.load):
+            for i, v in enumerate(node.nodeAllLoad()):
                 self.loadArray[ind+i] = v
         self.loadArray = np.dot(self.loadArray, self.matrix_constraint)
         # 解出位移矩阵
@@ -218,7 +240,6 @@ class Struction:
         return self
 
     def printImage(self):
-        self.calculate()
         # 将变形保存到节点中
         for node in self.nodeList:
             ind = self.nodeList.index(node)*3
@@ -236,7 +257,6 @@ class Struction:
             elementForceInLocal = [
                 float(elementForceInLocal[i][0]) for i in range(6)]
             element.solution[self.id] = {'force': elementForceInLocal}
-            print(elementForceInLocal)
         # 画图
         for element in self.elementList:
             f = element.solution[self.id]['force']
@@ -246,14 +266,28 @@ class Struction:
         locationCurve.sss()
         return self
 
-n1 = Node((0, 0), (1, 1, 0))
-n2 = Node((2, 0))
-n3 = Node((2, 1), (0, 0, 0), (0, -1, 0))
-n4 = Node((3, 1), (0, 1, 0))
-e1 = Element((n1, n2))
-e2 = Element((n2, n3))
-e3 = Element((n3, n4))
+
+def lp(a, d=''):
+    print((f'>>>>>>>>>>{d}<<<<<<<<<<\n' if d else '') + f'{np.round(a, 2)}')
+
+# n1 = Node((0, 0), (1, 1, 1))
+# n2 = Node((2, 0))
+# n3 = Node((2, 1), load=(0, -1, 0))
+# n4 = Node((3, 1), (1, 1, 1))
+# e1 = Element((n1, n2),elementEA=99)
+# e2 = Element((n2, n3),elementEA=99)
+# e3 = Element((n3, n4),elementEA=99)
+# c1 = Struction(n1)
+
+
+n1 = Node((0, 0), (1, 1, 1))
+n2 = Node((2, 0), (0, 0, 0))
+n3 = Node((2, 1), load=(0, -1, 0))
+n4 = Node((3, 1), (1, 1, 1))
+e1 = Element((n1, n2), elementEA=10000)
+e2 = Element((n2, n3), elementEA=10000)
+e3 = Element((n3, n4),elementEA=10000)
 c1 = Struction(n1)
 
+c1.calculate()
 c1.printImage()
-
