@@ -261,9 +261,11 @@ class Struction:
         for element in self.elementList:
             f = element.solution[self.id]['force']
             enp = element.node[0].position
-            locationCurve.plotBendingMoment(-f[2], f[5], 0,
+            locationCurve.plotBendingMoment(f[2], -f[5], 0,
                                             element.length, enp[0], enp[1], element.ang, 1)
-        locationCurve.sss()
+            locationCurve.plotShearingForce(
+                f[1], -f[4], element.length, enp[0], enp[1], element.ang, 1)
+        locationCurve.show()
         return self
 
 
@@ -286,7 +288,7 @@ n3 = Node((2, 1), load=(0, -1, 0))
 n4 = Node((3, 1), (1, 1, 1))
 e1 = Element((n1, n2), elementEA=10000)
 e2 = Element((n2, n3), elementEA=10000)
-e3 = Element((n3, n4),elementEA=10000)
+e3 = Element((n3, n4), elementEA=10000)
 c1 = Struction(n1)
 
 c1.calculate()

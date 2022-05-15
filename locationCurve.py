@@ -150,7 +150,6 @@ class FunctionCurve:
             elif dy1*dy2 < 0:
                 self.extremePoints.append((x, y1))
             elif dy1*dy2 == 0 and abs(dy1+dy2) > 10**(-sensitivity):
-                print(self.funcY)
                 self.extremePoints.append((x, y1))
         return self.extremePoints
 
@@ -172,25 +171,6 @@ class FunctionCurve:
 # ======================================================================
 
 
-def plotFuncLite(fc: FunctionCurve):
-    '''
-    绘图小函数, 输入一个FunctionCurve实例, 自动绘制该曲线
-    '''
-    # 绘图
-    x, y = fc.genelocalCurve()
-    plt.plot(x, y, color='#FF0000')
-    # 绘制局部坐标x轴
-    x, y = fc.genelocalXAxis()
-    plt.plot(x, y, color='#000000')
-    # # 绘制局部坐标y轴
-    # x, y = fc.genelocalYAxis()
-    # plt.plot(x, y, color='#000000')
-    # 标记极值点
-    for x, y in fc.extremePoints:
-        lx, ly = fc.localToGlobal(x, y)
-        lx0, ly0 = fc.localToGlobal(x, 0)
-        plt.plot([lx, lx0], [ly, ly0], color='#E08389', alpha=0.5)
-        plt.text(lx, ly, str(round(y, 3)), color='#E08389')
 
 
 def plotBendingMoment(m1, m2, q, l, x, y, a, scale=0.1):
@@ -214,17 +194,49 @@ def plotBendingMoment(m1, m2, q, l, x, y, a, scale=0.1):
         f = quadraticFunctionBy3Points(
             0, m1, l, m2, l/2, (1/8)*q*l**2+(m1+m2)/2)
     fc = FunctionCurve(f, 0, l, 0.001).setLocal(x, y, a, -scale)
-    plotFuncLite(fc)
+    # 绘图
+    x, y = fc.genelocalCurve()
+    plt.plot(x, y, color='#FF0000')
+    # 绘制局部坐标x轴
+    x, y = fc.genelocalXAxis()
+    plt.plot(x, y, color='#000000')
+    # 标记极值点
+    for x, y in fc.extremePoints:
+        lx, ly = fc.localToGlobal(x, y)
+        lx0, ly0 = fc.localToGlobal(x, 0)
+        plt.plot([lx, lx0], [ly, ly0], color='#E08389', alpha=0.5)
+        plt.text(lx, ly, str(round(abs(y), 3)), color='#E08389')
 
+def plotShearingForce(v1, v2, l, x, y, a, scale=0.1):
+    '''
+    输入若干参数, 绘制弯矩图
+    :param v1: 左侧支座剪力
+    :param 22: 右侧支座剪力
+    :param l: 杆件长度
+    :param x: 构件起点x坐标
+    :param y: 构件起点y坐标
+    :param a: 构件转角(角度)
+    :param scale: 放大系数
+    :return (x,y): 整体坐标
+    '''
+    '''没有均布荷载'''
+    f = linearFunctionBy2Points(0, v1, l, v2)
+    fc = FunctionCurve(f, 0, l, 0.001).setLocal(x, y, a, scale)
+    # 绘图
+    x, y = fc.genelocalCurve()
+    plt.plot(x, y, color='#0070C0')
+    # 绘制局部坐标x轴
+    x, y = fc.genelocalXAxis()
+    plt.plot(x, y, color='#000000')
+    # 标记极值点
+    for x, y in fc.extremePoints:
+        lx, ly = fc.localToGlobal(x, y)
+        lx0, ly0 = fc.localToGlobal(x, 0)
+        plt.plot([lx, lx0], [ly, ly0], color='#54C1F0', alpha=0.5)
+        plt.text(lx, ly, str(round(y, 3)), color='#54C1F0')
 
-# plotBendingMoment(0, 0, 0, 0, 14.4, 12, 0)
-# plotBendingMoment(-121.26, -122.23, 43.29, 6, 0, 6, 0)
-# plotBendingMoment(-14.6574, -14.66, 9.33, 2.4, 6, 6, 0)
-# plotBendingMoment(-121.24, -121.24, 43.29, 6, 8.4, 6, 0)
-
-# plotBendingMoment(-40, -60, 10, 8, 20, 0, 90)
 # 显示图形
-def sss():
+def show():
     ax = plt.gca()
     ax.set_aspect(1)
     plt.show()
