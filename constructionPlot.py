@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
-import math
+
+from liteTools import MathTools
 
 
 def quadraticFunctionBy3Points(x1, y1, x2, y2, x3, y3):
@@ -20,42 +21,6 @@ def linearFunctionBy2Points(x1, y1, x2, y2):
     :return: function: 返回函数f(x)
     '''
     return lambda x: (y2-y1)/(x2-x1)*(x-x1) + y1
-
-
-class LiteMathTools:
-    @staticmethod
-    def uniVector(degrees):
-        '''
-        输入角度, 输出单位向量
-        :param degrees: 角度
-        :return: tuple(x,y): 返回单位向量元组
-        '''
-        radians = math.radians(degrees)
-        return (math.cos(radians), math.sin(radians))
-
-    @staticmethod
-    def geneSequence(a, b, step):
-        '''
-        生成等差数列 (范围a~b, 公差为step) 
-        :param a: 数列首项
-        :param b: 数列末项
-        :param step: 数列公差
-        :return tuple: 数列元组
-        '''
-        # 开始生成
-        arr = []
-        x = a
-        while 1:
-            arr.append(x)
-            x += step
-            if step == 0:
-                raise Exception('step不应该为0')
-            elif step*(x-b) > 0:
-                arr.append(b)
-                break
-            elif step*(x-b) == 0:
-                break
-        return tuple(arr)
 
 
 class FunctionCurve:
@@ -80,7 +45,7 @@ class FunctionCurve:
         self.localA = localA
         self.yScale = yScale
         # 生成函数曲线
-        self.funcX = LiteMathTools.geneSequence(
+        self.funcX = MathTools.geneSequence(
             self.func_a, self.func_b, self.func_step)
         self.funcY = [self.func(i) for i in self.funcX]
         # 寻找极值点和函数边缘
@@ -161,8 +126,8 @@ class FunctionCurve:
         :param y: 局部y坐标
         :return (x,y): 整体坐标
         '''
-        xArr = LiteMathTools.uniVector(self.localA)
-        yArr = LiteMathTools.uniVector(self.localA+90)
+        xArr = MathTools.uniVector(self.localA)
+        yArr = MathTools.uniVector(self.localA+90)
         gx = self.localX + x*xArr[0] + y*yArr[0]*self.yScale
         gy = self.localY + x*xArr[1] + y*yArr[1]*self.yScale
         return (gx, gy)

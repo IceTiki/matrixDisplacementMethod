@@ -1,34 +1,8 @@
-import locationCurve
 import numpy as np
 import math
-import random
 
-
-class Utils:
-    numUuid = 0
-
-    @staticmethod
-    def geneNumId():
-        '''
-        分配整数UUID
-        '''
-        Utils.numUuid += 1
-        return Utils.numUuid
-
-    @staticmethod
-    def geneId(len_=16, dict_='0123456789qwertyuiopasdfghjklzxcvbnQWERTYUIOPASDFGHJKLZXCVBNM'):
-        '''
-        生成随机UUID
-        '''
-        return str().join(random.choices(dict_, k=len_))
-
-
-class LiteMathTools:
-    @staticmethod
-    def distanceBetweenTwoPoint(p1: tuple[float, float], p2: tuple[float, float]):
-        dx = p2[0] - p1[0]
-        dy = p2[1] - p1[1]
-        return (dx**2+dy**2)**(0.5)
+import constructionPlot
+from liteTools import MathTools, MiscTools
 
 
 class Node:
@@ -46,7 +20,7 @@ class Node:
         self.position = position
         self.unlock = tuple((0 if i else 1) for i in lock)
         self.load = load
-        self.id = Utils.geneNumId()
+        self.id = MiscTools.geneNumId()
         # 接口
         self.element: list[Element] = []
         # 解
@@ -88,7 +62,7 @@ class Element:
         self.elementEI = elementEI
         self.q = q
         self.eleLoad = None
-        self.id = Utils.geneNumId()
+        self.id = MiscTools.geneNumId()
         # 节点单元联系
         for n in self.node:
             n.element.append(self)
@@ -102,7 +76,7 @@ class Element:
         self.solution = {}
 
     def update(self):
-        self.length = LiteMathTools.distanceBetweenTwoPoint(
+        self.length = MathTools.distanceBetweenTwoPoint(
             self.node[0].position, self.node[1].position)
         self.matrix_coordTrans = self.geneMatrix_globalToLocalCoordinateSystem()
         self.matrix_elementL = self.geneElementMatrix_localCoordinateSystem()
@@ -187,7 +161,7 @@ class Struction:
         输入结构中的任意节点, 自动寻找与之有联系的所有单元和节点
         '''
         # 生成结构元素列表
-        self.id = Utils.geneNumId()
+        self.id = MiscTools.geneNumId()
         self.firstNode = firstNode
         self.nodeList: list[Node] = []
         self.elementList: list[Element] = []
@@ -270,7 +244,7 @@ class Struction:
         self.isCalcultated = True
         return self
 
-    def printImage(self, printAxialForce=True, printShearingForce=False, printbendingMoment=False):
+    def printImage(self, printAxialForce=False, printShearingForce=False, printbendingMoment=True):
         '''
         根据计算结果绘制内力图
         '''
@@ -302,15 +276,15 @@ class Struction:
             f = element.solution[self.id]['fullForce']
             enp = element.node[0].position
             if printAxialForce:
-                locationCurve.plotShearingForce(
+                constructionPlot.plotShearingForce(
                     f[0], f[0], element.length, enp[0], enp[1], element.ang, 0.1)
             if printShearingForce:
-                locationCurve.plotBendingMoment(f[2], -f[5], element.q,
-                                                element.length, enp[0], enp[1], element.ang, 0.1)
+                constructionPlot.plotBendingMoment(f[2], -f[5], element.q,
+                                                   element.length, enp[0], enp[1], element.ang, 0.1)
             if printbendingMoment:
-                locationCurve.plotShearingForce(
+                constructionPlot.plotShearingForce(
                     f[1], -f[4], element.length, enp[0], enp[1], element.ang, 0.1)
-        locationCurve.show()
+        constructionPlot.show()
         return self
 
 
