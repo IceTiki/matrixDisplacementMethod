@@ -3,6 +3,11 @@ import math
 
 import constructionPlot
 from liteTools import MathTools, MiscTools
+'''
+本文件定义了三个类, 分别是Node(节点), Element(单元), Struction(结构)。
+依赖关系而言, 单元依赖于节点, 结构依赖于单元与节点。
+    比如单元有一些参数 (比如单元刚度矩阵) 依赖于节点的参数, 但节点的参数不依赖于单元。(节点的等效荷载算是特例, 所以被做成函数)
+'''
 
 
 class Node:
@@ -17,7 +22,7 @@ class Node:
         :params load: Tuple[float, float, float]: 节点荷载(μ, ν, θ)
         '''
         # 基本性质
-        self.position = position
+        self.position: tuple[float, float] = position
         self.unlock = tuple((0 if i else 1) for i in lock)
         self.load = load
         self.id = MiscTools.geneNumId()
@@ -26,19 +31,44 @@ class Node:
         # 解
         self.solution = {}
 
-    def nodeAllLoad(self):
+    def setProperties(self, x=None, y=None, load=None, lock=None):
         '''
-        统计单元传来的等效荷载和节点本身的荷载
-        :return: load: Tuple[float, float, float]: 节点荷载(μ, ν, θ)
+        重设节点参数
+        :params x: 节点x坐标
+        :params y: 节点y坐标
+        :params load: 节点荷载
+        :params lock: 节点约束
+        '''
+        # 位置
+        position = list(self.position)
+        if x != None:
+            position[0] = x
+        if y != None:
+            position[1] = y
+        self.position = tuple(position)
+        # 荷载
+        if load != None:
+            self.load = tuple(load)
+        # 约束
+        if lock != None:
+            unlock = tuple((0 if i else 1) for i in lock)
+            self.unlock = unlock
+        return self
+
+    def geneCalculationLoad(self):
+        '''
+        统计单元传来的等效荷载, 以及生成总节点荷载
         '''
         load = self.load
+        load_equivalent = [0, 0, 0]
         for element in self.element:
             position = element.node.index(self)
             eleLoad = [-i for i in element.eleLoad]
             eleLoad = np.dot(element.matrix_coordTrans.T, eleLoad)
             eleLoad = eleLoad.tolist()[0][position*3:position*3+3]
-            load = [a+b for a, b in zip(load, eleLoad)]
-        return load
+            load_equivalent = [a+b for a, b in zip(load_equivalent, eleLoad)]
+        load_calculate = [a+b for a, b in zip(load_equivalent, load)]
+        return load_calculate
 
     def __str__(self):
         return f'Node {self.id}'
@@ -61,13 +91,16 @@ class Element:
         self.elementEA = elementEA
         self.elementEI = elementEI
         self.q = q
-        self.eleLoad = None
         self.id = MiscTools.geneNumId()
         # 节点单元联系
         for n in self.node:
             n.element.append(self)
         # 生成性质
         self.length = None
+        self.unitVector = None
+        self.rad = None
+        self.ang = None
+        self.eleLoad = None
         self.matrix_coordTrans = None
         self.matrix_elementL = None
         self.matrix_elementG = None
@@ -207,6 +240,10 @@ class Struction:
 
     def calculate(self):
         '''计算结构内力'''
+        # 更新单元
+        for e in self.elementList:
+            e.update()
+        # 生成总钢矩阵
         matrixSize = len(self.nodeList)*3
         self.matrix_totalStiffness = np.zeros((matrixSize, matrixSize))
         # 组合单钢矩阵
@@ -237,11 +274,11 @@ class Struction:
             for i, v in enumerate(node.unlock):
                 if not v:
                     self.matrix_totalStiffness[ind+i][ind+i] = 1
-        # 组合荷载矩阵
+        # 节点荷载向量 (含等效节点荷载)
         self.loadArray = np.zeros(matrixSize)
         for node in self.nodeList:
             ind = self.nodeList.index(node)*3
-            for i, v in enumerate(node.nodeAllLoad()):
+            for i, v in enumerate(node.geneCalculationLoad()):
                 self.loadArray[ind+i] = v
         self.loadArray = np.dot(self.loadArray, self.matrix_constraint)
         # 解出位移矩阵

@@ -182,7 +182,7 @@ class StructionPlot:
             '''有均布荷载'''
             f = FuncLib.quadraticFunctionBy3Points(
                 0, m1, l, m2, l/2, (1/8)*q*l**2+(m1+m2)/2)
-        fc = FunctionCurve(f, 0, l, 0.001).setLocal(x, y, a, scale)
+        fc = FunctionCurve(f, 0, l, l/1000).setLocal(x, y, a, scale)
         self.axPlot(self.axM, fc, ('#000000', '#FF0000',
                     '#E08389'), 'Bending Moment Diagram')
 
@@ -199,7 +199,7 @@ class StructionPlot:
         :return (x,y): 整体坐标
         '''
         f = FuncLib.linearFunctionBy2Points(0, v1, l, v2)
-        fc = FunctionCurve(f, 0, l, 0.001).setLocal(x, y, a, scale)
+        fc = FunctionCurve(f, 0, l, l/1000).setLocal(x, y, a, scale)
         self.axPlot(self.axV, fc, ('#000000', '#0070C0',
                     '#54C1F0'), 'Shearing Force Diagram')
 
@@ -215,7 +215,7 @@ class StructionPlot:
         :return (x,y): 整体坐标
         '''
         f = FuncLib.linearFunctionBy2Points(0, n, l, n)
-        fc = FunctionCurve(f, 0, l, 0.001).setLocal(x, y, a, scale)
+        fc = FunctionCurve(f, 0, l, l/1000).setLocal(x, y, a, scale)
         self.axPlot(self.axN, fc, ('#000000', '#085820',
                     '#6BD089'), 'Axial Force Diagram')
 
