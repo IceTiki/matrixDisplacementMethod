@@ -1,5 +1,6 @@
 import math
 import random
+import os
 
 
 class MiscTools:
@@ -19,6 +20,21 @@ class MiscTools:
         生成随机UUID
         '''
         return str().join(random.choices(dict_, k=len_))
+
+    @staticmethod
+    def geneFileFolder(folderDir='./pic', fileName=('a', 'b'), fileType='png'):
+        '''
+        :params folderDir: 文件夹路径
+        :params fileName: 文件名元组
+        :params fileType: 文件类型
+        :return: 在文件夹里的文件路径元组
+        '''
+        if not os.path.isdir(folderDir):
+            os.makedirs(folderDir)
+        fileDir = []
+        for i in fileName:
+            fileDir.append(os.path.join(folderDir, f'{i}.{fileType}'))
+        return tuple(fileDir)
 
 
 class MathTools:

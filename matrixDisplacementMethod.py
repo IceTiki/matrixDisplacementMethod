@@ -108,6 +108,20 @@ class Element:
         # 解
         self.solution = {}
 
+    def setProperties(self, elementEA=None, elementEI=None, q=None):
+        '''
+        重设单元参数
+        :params elementEA: 单元截面EA
+        :params elementEI: 单元截面EI
+        :params q: 均布荷载
+        '''
+        if elementEA != None:
+            self.elementEA = elementEA
+        if elementEI != None:
+            self.elementEI = elementEI
+        if q != None:
+            self.q = q
+
     def update(self):
         self.geneGeometricProperties()
         self.matrix_coordTrans = self.geneMatrix_globalToLocalCoordinateSystem()
@@ -307,16 +321,23 @@ class Struction:
             element.solution[self.id] = {'fullForce': elementFullForceInLocal}
         return self
 
-    def printImage(self, scale=(0.1, 0.1, 0.1), printForce=(True, True, True), outputType=0):
+    def printImage(self, scale=(0.1, 0.1, 0.1), printForce=(True, True, True), outputType=0, figSize=(10, 10), picOutput=('./pic', 'pdf'), decimal=(2, 2, 2)):
         '''
         根据计算结果绘制内力图
         :params scale: tuple[float, float, float]: 轴力 剪力 弯矩图的放大系数
         :params printForce: tuple[bool, bool, bool]: 是否绘制(轴力 剪力 弯矩)图
+        :params outputType: 
+            0: 各内力图独占画布
+            1: 各内力图共用画布
+        :params figSize: 画布大小(单位: 英寸)
+        :params picOutput: 图片保存的位置和类型(如果为None则不保存)
+        :params decimal: 数据标记精度(轴力|剪力|弯矩)
         '''
         if not self.isCalcultated:
             self.calculate()
         # 画图
-        cplot = constructionPlot.StructionPlot(outputType)
+        cplot = constructionPlot.StructionPlot(
+            outputType, figSize=figSize, picOutput=picOutput, scale=scale, decimal=decimal)
         for element in self.elementList:
             '''逐个单元进行绘图'''
             f = element.solution[self.id]['fullForce']
@@ -324,14 +345,14 @@ class Struction:
             if printForce[0]:
                 '''绘制轴力图'''
                 cplot.plotAxialForce(
-                    f[0], element.length, enp[0], enp[1], element.ang, scale=scale[0])
+                    f[0], element.length, enp[0], enp[1], element.ang)
             if printForce[1]:
                 '''绘制剪力图'''
                 cplot.plotShearingForce(
-                    f[1], -f[4], element.length, enp[0], enp[1], element.ang, scale=scale[1])
+                    f[1], -f[4], element.length, enp[0], enp[1], element.ang)
             if printForce[2]:
                 '''绘制弯矩图'''
-                cplot.plotBendingMoment(f[2], -f[5], element.q,
-                                        element.length, enp[0], enp[1], element.ang, scale=scale[2])
+                cplot.plotBendingMoment(
+                    f[2], -f[5], element.q, element.length, enp[0], enp[1], element.ang)
         cplot.show()
         return self

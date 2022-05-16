@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from liteTools import MathTools
+from liteTools import MathTools, MiscTools
 
 
 class FuncLib:
@@ -140,29 +140,48 @@ class StructionPlot:
     结构内力图
     '''
 
-    def __init__(self, outputType=0):
+    def __init__(self, outputType=0, figSize=(10, 10), picOutput=('./pic', 'pdf'), scale=(0.1, 0.1, 0.1), decimal=(2, 2, 2)):
+        '''
+        :params outputType: 
+            0: 各内力图独占画布
+            1: 各内力图共用画布
+            2: 各内力图共用坐标系
+        :params figSize: 画布大小(单位: 英寸)
+        :params picOutput: 图片保存的位置和类型(如果为None则不保存)
+        :param scale: 放大系数(轴力|剪力|弯矩)
+        :params decimal: 数据标记精度(轴力|剪力|弯矩)
+        '''
         self.outputType = outputType
+        self.picOutput = picOutput
+        self.scale = scale
+        self.decimal = decimal
+        self.figs = []
+        self.axes = []
         if outputType == 0:
-            self.figN = plt.figure(figsize=(12, 7))
-            self.axN = self.figN.add_subplot()
-            self.axN.set_aspect(1)
-            self.figV = plt.figure(figsize=(12, 7))
-            self.axV = self.figV.add_subplot()
-            self.axV.set_aspect(1)
-            self.figM = plt.figure(figsize=(12, 7))
-            self.axM = self.figM.add_subplot()
-            self.axM.set_aspect(1)
+            for _ in range(3):
+                fig = plt.figure(figsize=figSize)
+                fig.tight_layout()
+                ax = fig.add_subplot()
+                ax.set_aspect(1)
+                self.figs.append(fig)
+                self.axes.append(fig)
         elif outputType == 1:
-            self.fig = plt.figure()
-            self.fig.tight_layout()
-            self.axN = self.fig.add_subplot(131)
-            self.axN.set_aspect(1)
-            self.axV = self.fig.add_subplot(132)
-            self.axV.set_aspect(1)
-            self.axM = self.fig.add_subplot(133)
-            self.axM.set_aspect(1)
+            fig = plt.figure(figsize=figSize)
+            fig.tight_layout()
+            self.figs.append(fig)
+            for i in range(131, 134):
+                ax = fig.add_subplot(i)
+                ax.set_aspect(1)
+                self.axes.append(ax)
+        elif outputType == 2:
+            fig = plt.figure(figsize=figSize)
+            fig.tight_layout()
+            self.figs.append(fig)
+            ax = fig.add_subplot()
+            ax.set_aspect(1)
+            self.axes = [ax, ax, ax]
 
-    def plotBendingMoment(self, m1, m2, q, l, x, y, a, scale=0.1):
+    def plotBendingMoment(self, m1, m2, q, l, x, y, a):
         '''
         输入若干参数, 绘制弯矩图
         :param m1: 左侧支座弯矩
@@ -172,7 +191,6 @@ class StructionPlot:
         :param x: 构件起点x坐标
         :param y: 构件起点y坐标
         :param a: 构件转角(角度)
-        :param scale: 弯矩放大系数
         :return (x,y): 整体坐标
         '''
         if q == 0:
@@ -182,11 +200,11 @@ class StructionPlot:
             '''有均布荷载'''
             f = FuncLib.quadraticFunctionBy3Points(
                 0, m1, l, m2, l/2, (1/8)*q*l**2+(m1+m2)/2)
-        fc = FunctionCurve(f, 0, l, l/1000).setLocal(x, y, a, scale)
-        self.axPlot(self.axM, fc, ('#000000', '#FF0000',
-                    '#E08389'), 'Bending Moment Diagram')
+        fc = FunctionCurve(f, 0, l, l/1000).setLocal(x, y, a, self.scale[2])
+        self.axPlot(self.axes[2], fc, ('#000000', '#FF0000',
+                    '#E08389'), 'Bending Moment Diagram', self.decimal[2])
 
-    def plotShearingForce(self, v1, v2, l, x, y, a, scale=0.1):
+    def plotShearingForce(self, v1, v2, l, x, y, a):
         '''
         输入若干参数, 绘制剪力图
         :param v1: 左侧支座剪力
@@ -195,15 +213,14 @@ class StructionPlot:
         :param x: 构件起点x坐标
         :param y: 构件起点y坐标
         :param a: 构件转角(角度)
-        :param scale: 放大系数
         :return (x,y): 整体坐标
         '''
         f = FuncLib.linearFunctionBy2Points(0, v1, l, v2)
-        fc = FunctionCurve(f, 0, l, l/1000).setLocal(x, y, a, scale)
-        self.axPlot(self.axV, fc, ('#000000', '#0070C0',
-                    '#54C1F0'), 'Shearing Force Diagram')
+        fc = FunctionCurve(f, 0, l, l/1000).setLocal(x, y, a, self.scale[1])
+        self.axPlot(self.axes[1], fc, ('#000000', '#0070C0',
+                    '#54C1F0'), 'Shearing Force Diagram', self.decimal[1])
 
-    def plotAxialForce(self, n, l, x, y, a, scale=0.1):
+    def plotAxialForce(self, n, l, x, y, a):
         '''
         输入若干参数, 绘制轴力图
         :param n: 杆件轴力
@@ -211,22 +228,22 @@ class StructionPlot:
         :param x: 构件起点x坐标
         :param y: 构件起点y坐标
         :param a: 构件转角(角度)
-        :param scale: 放大系数
         :return (x,y): 整体坐标
         '''
         f = FuncLib.linearFunctionBy2Points(0, n, l, n)
-        fc = FunctionCurve(f, 0, l, l/1000).setLocal(x, y, a, scale)
-        self.axPlot(self.axN, fc, ('#000000', '#085820',
-                    '#6BD089'), 'Axial Force Diagram')
+        fc = FunctionCurve(f, 0, l, l/1000).setLocal(x, y, a, self.scale[0])
+        self.axPlot(self.axes[0], fc, ('#000000', '#138535',
+                    '#6BD089'), 'Axial Force Diagram', self.decimal[0])
 
     @staticmethod
-    def axPlot(ax: plt.Axes, fc: FunctionCurve, color=('#000000', '#085820', '#6BD089'), title=''):
+    def axPlot(ax: plt.Axes, fc: FunctionCurve, color=('#000000', '#085820', '#6BD089'), title='', decimal=2):
         '''
         在指定ax上画内力图
         :params ax: 坐标系对象
         :params fc: 函数曲线对象
         :params color: 颜色样式(x轴, 内力, 标注)
         :params title: 坐标系标题
+        :params decimal: 数据标记精度
         '''
         # 增加坐标系标题
         ax.set_title(title)
@@ -241,10 +258,20 @@ class StructionPlot:
             lx, ly = fc.localToGlobal(x, y)
             lx0, ly0 = fc.localToGlobal(x, 0)
             ax.plot([lx, lx0], [ly, ly0], color=color[2], alpha=0.5)
-            ax.text(lx, ly, str(round(y, 3)), color=color[2])
+            ax.text(lx, ly, str(round(y, decimal)), color=color[2])
 
     def show(self):
         '''
-        显示图形
+        显示(保存)图形
         '''
+        if self.picOutput:
+            if self.outputType == 0:
+                fileName = ('Axial Force Diagram',
+                            'Shearing Force Diagram', 'Bending Moment Diagram')
+            elif self.outputType in (1, 2):
+                fileName = ('Internal Force Diagram',)
+            fileName = MiscTools.geneFileFolder(
+                self.picOutput[0], fileName, self.picOutput[1])
+            for n, f in zip(fileName, self.figs):
+                f.savefig(n)
         plt.show()
