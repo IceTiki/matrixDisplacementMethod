@@ -164,7 +164,7 @@ class StructionPlot:
                 ax = fig.add_subplot()
                 ax.set_aspect(1)
                 self.figs.append(fig)
-                self.axes.append(fig)
+                self.axes.append(ax)
         elif outputType == 1:
             fig = plt.figure(figsize=figSize)
             fig.tight_layout()
