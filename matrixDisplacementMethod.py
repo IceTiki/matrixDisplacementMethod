@@ -76,23 +76,29 @@ class Element:
         self.solution = {}
 
     def update(self):
-        self.length = MathTools.distanceBetweenTwoPoint(
-            self.node[0].position, self.node[1].position)
+        self.geneGeometricProperties()
         self.matrix_coordTrans = self.geneMatrix_globalToLocalCoordinateSystem()
         self.matrix_elementL = self.geneElementMatrix_localCoordinateSystem()
         self.matrix_elementG = self.geneElementMatrix_globalCoordinateSystem()
         self.eleLoad = self.geneElementLoad()
 
-    def geneMatrix_globalToLocalCoordinateSystem(self):
-        '''整体转局部坐标转换矩阵'''
+    def geneGeometricProperties(self):
+        '''生成构件几何性质'''
         p1 = self.node[0].position
         p2 = self.node[1].position
         dx = p2[0] - p1[0]
         dy = p2[1] - p1[1]
-        udx = dx/self.length
-        udy = dy/self.length
+        l = (dx**2+dy**2)**(0.5)
+        udx = dx/l
+        udy = dy/l
+        self.length = l
+        self.unitVector = (udx, udy)
         self.rad = math.acos(udx) if udy >= 0 else 2*math.pi - math.acos(udx)
         self.ang = math.degrees(self.rad)
+
+    def geneMatrix_globalToLocalCoordinateSystem(self):
+        '''整体转局部坐标转换矩阵'''
+        udx, udy = self.unitVector
         matrix = [
             [udx, -udy, 0, 0, 0, 0],
             [udy, udx, 0, 0, 0, 0],
@@ -264,7 +270,7 @@ class Struction:
             element.solution[self.id] = {'fullForce': elementFullForceInLocal}
         return self
 
-    def printImage(self, scale=(0.1, 0.1, 0.1), printForce=(True, True, True), outputType = 0):
+    def printImage(self, scale=(0.1, 0.1, 0.1), printForce=(True, True, True), outputType=0):
         '''
         根据计算结果绘制内力图
         :params scale: tuple[float, float, float]: 轴力 剪力 弯矩图的放大系数
