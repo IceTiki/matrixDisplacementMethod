@@ -9,6 +9,8 @@ from liteTools import MathTools, MiscTools
     比如单元有一些参数 (比如单元刚度矩阵) 依赖于节点的参数, 但节点的参数不依赖于单元。(节点的等效荷载算是特例, 所以被做成函数)
 '''
 
+# 注意，节点接收等效荷载的时候会反向
+
 
 class Node:
     '''
@@ -63,10 +65,13 @@ class Node:
         load_equivalent = [0, 0, 0]
         for element in self.element:
             position = element.node.index(self)
-            eleLoad = [-i for i in element.eleLoad]
-            eleLoad = np.dot(element.matrix_coordTrans.T, eleLoad)
-            eleLoad = eleLoad.tolist()[0][position*3:position*3+3]
-            load_equivalent = [a+b for a, b in zip(load_equivalent, eleLoad)]
+            nodeEquivalentLoads = [-i for i in element.nodeEquivalentLoads]
+            nodeEquivalentLoads = np.dot(
+                element.matrix_coordTrans.T, nodeEquivalentLoads)
+            nodeEquivalentLoads = nodeEquivalentLoads.tolist()[
+                0][position*3:position*3+3]
+            load_equivalent = [a+b for a,
+                               b in zip(load_equivalent, nodeEquivalentLoads)]
         load_calculate = [a+b for a, b in zip(load_equivalent, load)]
         return load_calculate
 
@@ -95,16 +100,6 @@ class Element:
         # 节点单元联系
         for n in self.node:
             n.element.append(self)
-        # 生成性质
-        self.length = None
-        self.unitVector = None
-        self.rad = None
-        self.ang = None
-        self.eleLoad = None
-        self.matrix_coordTrans = None
-        self.matrix_elementL = None
-        self.matrix_elementG = None
-        self.update()
         # 解
         self.solution = {}
 
@@ -122,15 +117,20 @@ class Element:
         if q != None:
             self.q = q
 
-    def update(self):
-        self.geneGeometricProperties()
-        self.matrix_coordTrans = self.geneMatrix_globalToLocalCoordinateSystem()
-        self.matrix_elementL = self.geneElementMatrix_localCoordinateSystem()
-        self.matrix_elementG = self.geneElementMatrix_globalCoordinateSystem()
-        self.eleLoad = self.geneElementLoad()
+    @property
+    def rad(self):
+        '''杆件转角(弧度)'''
+        udx, udy = self.unitVector
+        return math.acos(udx) if udy >= 0 else 2*math.pi - math.acos(udx)
 
-    def geneGeometricProperties(self):
-        '''生成构件几何性质'''
+    @property
+    def ang(self):
+        '''杆件转角(弧度)'''
+        return math.degrees(self.rad)
+
+    @property
+    def unitVector(self):
+        '''单位向量'''
         p1 = self.node[0].position
         p2 = self.node[1].position
         dx = p2[0] - p1[0]
@@ -138,12 +138,22 @@ class Element:
         l = (dx**2+dy**2)**(0.5)
         udx = dx/l
         udy = dy/l
-        self.length = l
-        self.unitVector = (udx, udy)
-        self.rad = math.acos(udx) if udy >= 0 else 2*math.pi - math.acos(udx)
-        self.ang = math.degrees(self.rad)
+        unitVector = (udx, udy)
+        return unitVector
 
-    def geneMatrix_globalToLocalCoordinateSystem(self):
+    @property
+    def length(self):
+        '''杆件长度'''
+        p1 = self.node[0].position
+        p2 = self.node[1].position
+        dx = p2[0] - p1[0]
+        dy = p2[1] - p1[1]
+        l = (dx**2+dy**2)**(0.5)
+        length = l
+        return length
+
+    @property
+    def matrix_coordTrans(self):
         '''整体转局部坐标转换矩阵'''
         udx, udy = self.unitVector
         matrix = [
@@ -156,7 +166,8 @@ class Element:
         ]
         return np.matrix(matrix)
 
-    def geneElementMatrix_localCoordinateSystem(self):
+    @property
+    def matrix_elementL(self):
         '''单元坐标系下的单元刚度矩阵'''
         ea = self.elementEA
         ei = self.elementEI
@@ -172,13 +183,12 @@ class Element:
         matrix = np.matrix(matrix)
         return matrix
 
-    def geneElementMatrix_globalCoordinateSystem(self):
+    @property
+    def matrix_elementG(self):
         '''结构坐标系下的单元刚度矩阵'''
-        self.matrix_elementL = self.geneElementMatrix_localCoordinateSystem()
-        self.matrix_coordTrans = self.geneMatrix_globalToLocalCoordinateSystem()
-        self.matrix_elementG = np.dot(
+        matrix_elementG = np.dot(
             np.dot(self.matrix_coordTrans.T, self.matrix_elementL), self.matrix_coordTrans)
-        return self.matrix_elementG
+        return matrix_elementG
 
     def geneLockMatrix(self):
         '''锁定矩阵, 将矩阵/向量中, 被锁定的分量设为0'''
@@ -194,11 +204,13 @@ class Element:
         ]
         return np.matrix(meaningMatrix)
 
-    def geneElementLoad(self):
+    @property
+    def nodeEquivalentLoads(self):
+        '''节点等效荷载'''
         q = self.q
         l = self.length
-        self.eleLoad = [0, -q*l/2, -q*l**2/12, 0, -q*l/2, q*l**2/12]
-        return self.eleLoad
+        nodeEquivalentLoads = [0, -q*l/2, -q*l**2/12, 0, -q*l/2, q*l**2/12]
+        return nodeEquivalentLoads
 
     def __str__(self):
         return f'Element {self.id}'
@@ -216,23 +228,15 @@ class Struction:
         # 生成结构元素列表
         self.id = MiscTools.geneNumId()
         self.firstNode = firstNode
-        self.nodeList: list[Node] = []
-        self.elementList: list[Element] = []
         self.isCalcultated = False
-        self.update()
-
-    def update(self):
-        '''
-        更新自身
-        '''
-        self.findStruction()
 
     def __str__(self):
         return f'Struction {self.id}'
 
-    def findStruction(self):
+    @property
+    def nodeList(self):
         '''
-        从初始节点开始寻找与其连接的节点和单元, 更新到自身的nodeList和elementList中
+        与初始节点有联系的节点列表
         '''
         nodeList = [self.firstNode]
         elementList = []
@@ -248,15 +252,31 @@ class Struction:
                         nodeList.append(n2)
         nodeList.sort(key=lambda x: x.id)
         elementList.sort(key=lambda x: x.id)
-        self.nodeList = tuple(nodeList)
-        self.elementList = tuple(elementList)
-        return self
+        return tuple(nodeList)
+
+    @property
+    def elementList(self):
+        '''
+        与初始节点有联系的单元列表
+        '''
+        nodeList = [self.firstNode]
+        elementList = []
+        for n in nodeList:
+            '''遍历节点列表'''
+            for e in n.element:
+                '''遍历该节点连接的单元列表'''
+                if e not in elementList:
+                    elementList.append(e)
+                for n2 in e.node:
+                    '''遍历该单元连接的节点列表'''
+                    if n2 not in nodeList:
+                        nodeList.append(n2)
+        nodeList.sort(key=lambda x: x.id)
+        elementList.sort(key=lambda x: x.id)
+        return tuple(elementList)
 
     def calculate(self):
         '''计算结构内力'''
-        # 更新单元
-        for e in self.elementList:
-            e.update()
         # 生成总钢矩阵
         matrixSize = len(self.nodeList)*3
         self.matrix_totalStiffness = np.zeros((matrixSize, matrixSize))
@@ -317,7 +337,7 @@ class Struction:
                 float(elementForceInLocal[i][0]) for i in range(6)]
             element.solution[self.id] = {'force': elementForceInLocal}
             elementFullForceInLocal = [
-                a+b for a, b in zip(elementForceInLocal, element.eleLoad)]
+                a+b for a, b in zip(elementForceInLocal, element.nodeEquivalentLoads)]
             element.solution[self.id] = {'fullForce': elementFullForceInLocal}
         return self
 
