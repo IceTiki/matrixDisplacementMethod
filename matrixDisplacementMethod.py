@@ -17,15 +17,15 @@ class Node:
     节点: 节点是结构中突变点(截面性质改变/存在集中荷载/分布荷载突变处)
     '''
 
-    def __init__(self, position=(0, 0), lock=(0, 0, 0), load=(0, 0, 0)):
+    def __init__(self, position=(0, 0), constraints=(0, 0, 0), load=(0, 0, 0)):
         '''
         :params position: Tuple[float, float]: 节点坐标(x, y)
-        :params lock: Tuple[int, int, int]: 节点被约束的分量
+        :params constraints: Tuple[int, int, int]: 节点被约束的分量
         :params load: Tuple[float, float, float]: 节点荷载(μ, ν, θ)
         '''
         # 基本性质
         self.position: tuple[float, float] = position
-        self.unlock = tuple((0 if i else 1) for i in lock)
+        self.constraints = constraints
         self.load = load
         self.id = MiscTools.geneNumId()
         # 接口
@@ -33,13 +33,13 @@ class Node:
         # 解
         self.solution = {}
 
-    def setProperties(self, x=None, y=None, load=None, lock=None):
+    def setProperties(self, x=None, y=None, load=None, constraints=None):
         '''
         重设节点参数
         :params x: 节点x坐标
         :params y: 节点y坐标
         :params load: 节点荷载
-        :params lock: 节点约束
+        :params constraints: 节点约束
         '''
         # 位置
         position = list(self.position)
@@ -52,10 +52,14 @@ class Node:
         if load != None:
             self.load = tuple(load)
         # 约束
-        if lock != None:
-            unlock = tuple((0 if i else 1) for i in lock)
-            self.unlock = unlock
+        if constraints != None:
+            self.constraints = constraints
         return self
+
+    @property
+    def noConstraints(self):
+        '''无约束的节点分量'''
+        return tuple((0 if i else 1) for i in self.constraints)
 
     def geneCalculationLoad(self):
         '''
@@ -192,8 +196,8 @@ class Element:
 
     def geneLockMatrix(self):
         '''锁定矩阵, 将矩阵/向量中, 被锁定的分量设为0'''
-        n1 = self.node[0].unlock
-        n2 = self.node[1].unlock
+        n1 = self.node[0].noConstraints
+        n2 = self.node[1].noConstraints
         meaningMatrix = [
             [n1[0], 0, 0, 0, 0, 0],
             [0, n1[1], 0, 0, 0, 0],
@@ -296,7 +300,7 @@ class Struction:
         self.matrix_constraint = np.zeros((matrixSize, matrixSize))
         for node in self.nodeList:
             ind = self.nodeList.index(node)*3
-            for i, v in enumerate(node.unlock):
+            for i, v in enumerate(node.noConstraints):
                 self.matrix_constraint[ind+i][ind+i] = v
         self.matrix_totalStiffness = np.dot(
             self.matrix_constraint, self.matrix_totalStiffness)
@@ -305,7 +309,7 @@ class Struction:
         # 处理支座约束: 对应行列的主对角线元素设1
         for node in self.nodeList:
             ind = self.nodeList.index(node)*3
-            for i, v in enumerate(node.unlock):
+            for i, v in enumerate(node.noConstraints):
                 if not v:
                     self.matrix_totalStiffness[ind+i][ind+i] = 1
         # 节点荷载向量 (含等效节点荷载)
