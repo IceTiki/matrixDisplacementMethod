@@ -57,7 +57,7 @@ class Node:
         return self
 
     @property
-    def noConstraints(self):
+    def unConstraint(self):
         '''无约束的节点分量'''
         return tuple((0 if i else 1) for i in self.constraints)
 
@@ -88,15 +88,18 @@ class Element:
     单元: 单元是两个节点之间的联系
     '''
 
-    def __init__(self, node: tuple[Node, Node], elementEA=10**10, elementEI=1, q=0):
+    def __init__(self, node: tuple[Node, Node], elementEA=10**10, elementEI=1, q=0, junctions=(1, 1, 1, 1, 1, 1)):
         '''
         :params node: tuple[Node, Node]: 单元连接的节点
         :params elementEA: float: 杆件弹性模量和截面面积的乘积
         :params elementEI: float: 杆件弹性模量和轴惯性矩的乘积
         :params q: float: 均布荷载
+        :params junctions: 单元与节点之间的连接方式,
+            分别代表单元端部与节点(x方向, y方向, 转角)是否绑定, 两个节点总共6个项目
         '''
         # 基本性质
         self.node = node
+        self.junctions = junctions
         self.elementEA = elementEA
         self.elementEI = elementEI
         self.q = q
@@ -107,12 +110,14 @@ class Element:
         # 解
         self.solution = {}
 
-    def setProperties(self, elementEA=None, elementEI=None, q=None):
+    def setProperties(self, elementEA=None, elementEI=None, q=None, junctions=None):
         '''
         重设单元参数
         :params elementEA: 单元截面EA
         :params elementEI: 单元截面EI
         :params q: 均布荷载
+        :params junctions: 单元与节点之间的连接方式,
+            分别代表单元端部与节点(x方向, y方向, 转角)是否绑定, 两个节点总共6个项目
         '''
         if elementEA != None:
             self.elementEA = elementEA
@@ -120,19 +125,26 @@ class Element:
             self.elementEI = elementEI
         if q != None:
             self.q = q
+        if junctions != None:
+            self.junctions = junctions
 
     @property
+    def unjunction(self):
+        '''无绑定的节点分量'''
+        return tuple((0 if i else 1) for i in self.junctions)
+
+    @ property
     def rad(self):
         '''杆件转角(弧度)'''
         udx, udy = self.unitVector
         return math.acos(udx) if udy >= 0 else 2*math.pi - math.acos(udx)
 
-    @property
+    @ property
     def ang(self):
         '''杆件转角(弧度)'''
         return math.degrees(self.rad)
 
-    @property
+    @ property
     def unitVector(self):
         '''单位向量'''
         p1 = self.node[0].position
@@ -145,7 +157,7 @@ class Element:
         unitVector = (udx, udy)
         return unitVector
 
-    @property
+    @ property
     def length(self):
         '''杆件长度'''
         p1 = self.node[0].position
@@ -156,7 +168,7 @@ class Element:
         length = l
         return length
 
-    @property
+    @ property
     def matrix_coordTrans(self):
         '''整体转局部坐标转换矩阵'''
         udx, udy = self.unitVector
@@ -170,7 +182,7 @@ class Element:
         ]
         return np.matrix(matrix)
 
-    @property
+    @ property
     def matrix_elementL(self):
         '''单元坐标系下的单元刚度矩阵'''
         ea = self.elementEA
@@ -187,7 +199,7 @@ class Element:
         matrix = np.matrix(matrix)
         return matrix
 
-    @property
+    @ property
     def matrix_elementG(self):
         '''结构坐标系下的单元刚度矩阵'''
         matrix_elementG = np.dot(
@@ -196,8 +208,8 @@ class Element:
 
     def geneLockMatrix(self):
         '''锁定矩阵, 将矩阵/向量中, 被锁定的分量设为0'''
-        n1 = self.node[0].noConstraints
-        n2 = self.node[1].noConstraints
+        n1 = self.node[0].unConstraint
+        n2 = self.node[1].unConstraint
         meaningMatrix = [
             [n1[0], 0, 0, 0, 0, 0],
             [0, n1[1], 0, 0, 0, 0],
@@ -208,7 +220,7 @@ class Element:
         ]
         return np.matrix(meaningMatrix)
 
-    @property
+    @ property
     def nodeEquivalentLoads(self):
         '''节点等效荷载'''
         q = self.q
@@ -237,7 +249,7 @@ class Struction:
     def __str__(self):
         return f'Struction {self.id}'
 
-    @property
+    @ property
     def nodeList(self):
         '''
         与初始节点有联系的节点列表
@@ -258,7 +270,7 @@ class Struction:
         elementList.sort(key=lambda x: x.id)
         return tuple(nodeList)
 
-    @property
+    @ property
     def elementList(self):
         '''
         与初始节点有联系的单元列表
@@ -300,7 +312,7 @@ class Struction:
         self.matrix_constraint = np.zeros((matrixSize, matrixSize))
         for node in self.nodeList:
             ind = self.nodeList.index(node)*3
-            for i, v in enumerate(node.noConstraints):
+            for i, v in enumerate(node.unConstraint):
                 self.matrix_constraint[ind+i][ind+i] = v
         self.matrix_totalStiffness = np.dot(
             self.matrix_constraint, self.matrix_totalStiffness)
@@ -309,7 +321,7 @@ class Struction:
         # 处理支座约束: 对应行列的主对角线元素设1
         for node in self.nodeList:
             ind = self.nodeList.index(node)*3
-            for i, v in enumerate(node.noConstraints):
+            for i, v in enumerate(node.unConstraint):
                 if not v:
                     self.matrix_totalStiffness[ind+i][ind+i] = 1
         # 节点荷载向量 (含等效节点荷载)
@@ -350,7 +362,7 @@ class Struction:
         根据计算结果绘制内力图
         :params scale: tuple[float, float, float]: 轴力 剪力 弯矩图的放大系数
         :params printForce: tuple[bool, bool, bool]: 是否绘制(轴力 剪力 弯矩)图
-        :params outputType: 
+        :params outputType:
             0: 各内力图独占画布
             1: 各内力图共用画布
         :params figSize: 画布大小(单位: 英寸)
