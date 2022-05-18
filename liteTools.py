@@ -1,6 +1,7 @@
 import math
 import random
 import os
+import numpy as np
 
 
 class MiscTools:
@@ -74,6 +75,15 @@ class MathTools:
 
     @staticmethod
     def distanceBetweenTwoPoint(p1: tuple[float, float], p2: tuple[float, float]):
+        '''计算两点间的间距'''
         dx = p2[0] - p1[0]
         dy = p2[1] - p1[1]
         return (dx**2+dy**2)**(0.5)
+
+    @staticmethod
+    def findZeroCross(a: np.matrix):
+        '''寻找矩阵中主对角线上的位置, 该位置所处的行列所有元素皆为0'''
+        zeroRow = np.where(~a.any(axis=1))[0]
+        zeroColumn = np.where(~a.any(axis=0))[1]
+        zeroCross = np.intersect1d(zeroRow, zeroColumn)
+        return zeroCross

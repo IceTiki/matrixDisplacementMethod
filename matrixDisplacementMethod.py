@@ -20,7 +20,7 @@ class Node:
     def __init__(self, position=(0, 0), constraints=(0, 0, 0), load=(0, 0, 0)):
         '''
         :params position: Tuple[float, float]: 节点坐标(x, y)
-        :params constraints: Tuple[int, int, int]: 节点被约束的分量
+        :params constraints: Tuple[int, int, int]: 节点被支座约束的分量
         :params load: Tuple[float, float, float]: 节点荷载(μ, ν, θ)
         '''
         # 基本性质
@@ -39,7 +39,7 @@ class Node:
         :params x: 节点x坐标
         :params y: 节点y坐标
         :params load: 节点荷载
-        :params constraints: 节点约束
+        :params constraints: 节点支座约束
         '''
         # 位置
         position = list(self.position)
@@ -57,9 +57,52 @@ class Node:
         return self
 
     @property
-    def unConstraint(self):
-        '''无约束的节点分量'''
+    def unconstraintComponent(self):
+        '''无支座约束的节点分量'''
         return tuple((0 if i else 1) for i in self.constraints)
+
+    @property
+    def bindingComponent(self):
+        '''受支座或单元约束的非自由分量'''
+        junctionConstraints = [0, 0, 0]
+        directionVectors = []
+        for element in self.element:
+            '''遍历节点连接的单元'''
+            nodeIndex = element.node.index(self)
+            elementConstraints = element.junctions[nodeIndex *
+                                                   3: (nodeIndex+1)*3]
+            eleV = element.unitVector
+            if elementConstraints[0]:
+                '''如果有轴向约束'''
+                directionVectors.append(eleV)
+            if elementConstraints[1]:
+                '''如果有法向约束'''
+                directionVectors.append((-eleV[1], eleV[0]))
+            if elementConstraints[2]:
+                '''如果有转角约束'''
+                junctionConstraints[2] = 1
+        # 考虑支座约束
+        if self.constraints[0]:
+            directionVectors.append((1, 0))
+        if self.constraints[1]:
+            directionVectors.append((0, 1))
+        if len(directionVectors) < 2:
+            raise Exception(f'节点『{self}』缺少来自支座或单元的约束')
+        directionVector_1 = directionVectors[0]
+        for v in directionVectors[1:]:
+            if np.cross(directionVector_1, v) != 0:
+                '''有向量与向量一不平行, 则节点的x, y位移被约束'''
+                junctionConstraints[0] = 1
+                junctionConstraints[1] = 1
+                break
+        else:
+            raise Exception(f'节点『{self}』缺少来自支座或单元的约束')
+        return tuple(junctionConstraints)
+
+    @property
+    def meaningfulComponent(self):
+        '''有意义的变量(没有被支座约束且与构件有连接)'''
+        return tuple(1 if a and b else 0 for a, b in zip(self.unconstraintComponent, self.bindingComponent))
 
     def geneCalculationLoad(self):
         '''
@@ -127,11 +170,6 @@ class Element:
             self.q = q
         if junctions != None:
             self.junctions = junctions
-
-    @property
-    def unjunction(self):
-        '''无绑定的节点分量'''
-        return tuple((0 if i else 1) for i in self.junctions)
 
     @ property
     def rad(self):
@@ -206,20 +244,6 @@ class Element:
             np.dot(self.matrix_coordTrans.T, self.matrix_elementL), self.matrix_coordTrans)
         return matrix_elementG
 
-    def geneLockMatrix(self):
-        '''锁定矩阵, 将矩阵/向量中, 被锁定的分量设为0'''
-        n1 = self.node[0].unConstraint
-        n2 = self.node[1].unConstraint
-        meaningMatrix = [
-            [n1[0], 0, 0, 0, 0, 0],
-            [0, n1[1], 0, 0, 0, 0],
-            [0, 0, n1[2], 0, 0, 0],
-            [0, 0, 0, n2[0], 0, 0],
-            [0, 0, 0, 0, n2[1], 0],
-            [0, 0, 0, 0, 0, n2[2]]
-        ]
-        return np.matrix(meaningMatrix)
-
     @ property
     def nodeEquivalentLoads(self):
         '''节点等效荷载'''
@@ -267,7 +291,7 @@ class Struction:
                     if n2 not in nodeList:
                         nodeList.append(n2)
         nodeList.sort(key=lambda x: x.id)
-        elementList.sort(key=lambda x: x.id)
+        nodeList: tuple[Node]
         return tuple(nodeList)
 
     @ property
@@ -287,19 +311,47 @@ class Struction:
                     '''遍历该单元连接的节点列表'''
                     if n2 not in nodeList:
                         nodeList.append(n2)
-        nodeList.sort(key=lambda x: x.id)
         elementList.sort(key=lambda x: x.id)
+        elementList: tuple[Element]
         return tuple(elementList)
+
+    @ property
+    def allMeaningfulComponents(self):
+        '''
+        整体刚度矩阵中需要计算的分量
+        '''
+        unconstraints = ()
+        for node in self.nodeList:
+            unconstraints += node.meaningfulComponent
+        return unconstraints
+
+    @ property
+    def matrix_setConstraintsToZero(self):
+        '''
+        将受约束的结构节点分量设为0的矩阵
+        (对向量需要前乘本矩阵)
+        (对二维矩阵需要前乘本矩阵再后乘本矩阵)
+        (总钢矩阵中, 受约束的节点分量行列被设为0(除了主对角线), 本矩阵用于设0)
+        '''
+        allUnconstraints = self.allMeaningfulComponents
+        # 将无约束分量向量组装到矩阵主对角线上
+        matrixSize = len(allUnconstraints)
+        matrix_unconstraint = np.zeros((matrixSize, matrixSize))
+        for i in range(matrixSize):
+            matrix_unconstraint[i, i] = allUnconstraints[i]
+        return matrix_unconstraint
 
     def calculate(self):
         '''计算结构内力'''
+        nodeList = self.nodeList
+        elementList = self.elementList
         # 生成总钢矩阵
-        matrixSize = len(self.nodeList)*3
+        matrixSize = len(nodeList)*3
         self.matrix_totalStiffness = np.zeros((matrixSize, matrixSize))
         # 组合单钢矩阵
-        for element in self.elementList:
-            i1 = self.nodeList.index(element.node[0])*3
-            i2 = self.nodeList.index(element.node[1])*3
+        for element in elementList:
+            i1 = nodeList.index(element.node[0])*3
+            i2 = nodeList.index(element.node[1])*3
             self.matrix_totalStiffness[i1:i1+3, i1:i1 +
                                        3] += element.matrix_elementG[0:3, 0:3]
             self.matrix_totalStiffness[i1:i1+3, i2:i2 +
@@ -308,40 +360,32 @@ class Struction:
                                        3] += element.matrix_elementG[3:6, 0:3]
             self.matrix_totalStiffness[i2:i2+3, i2:i2 +
                                        3] += element.matrix_elementG[3:6, 3:6]
-        # 处理支座约束: 对应行列设0
-        self.matrix_constraint = np.zeros((matrixSize, matrixSize))
-        for node in self.nodeList:
-            ind = self.nodeList.index(node)*3
-            for i, v in enumerate(node.unConstraint):
-                self.matrix_constraint[ind+i][ind+i] = v
-        self.matrix_totalStiffness = np.dot(
-            self.matrix_constraint, self.matrix_totalStiffness)
-        self.matrix_totalStiffness = np.dot(
-            self.matrix_totalStiffness, self.matrix_constraint)
-        # 处理支座约束: 对应行列的主对角线元素设1
-        for node in self.nodeList:
-            ind = self.nodeList.index(node)*3
-            for i, v in enumerate(node.unConstraint):
-                if not v:
-                    self.matrix_totalStiffness[ind+i][ind+i] = 1
+        # 处理不需要计算的分量: 对应行列设0
+        matrix_setConstraintsToZero = self.matrix_setConstraintsToZero
+        self.matrix_totalStiffness = np.dot(np.dot(
+            matrix_setConstraintsToZero, self.matrix_totalStiffness), matrix_setConstraintsToZero)
+        # 处理不需要计算的分量: 对应行列的主对角线元素设1
+        for i, v in enumerate(self.allMeaningfulComponents):
+            if not v:
+                self.matrix_totalStiffness[i][i] = 1
         # 节点荷载向量 (含等效节点荷载)
         self.loadArray = np.zeros(matrixSize)
-        for node in self.nodeList:
-            ind = self.nodeList.index(node)*3
+        for node in nodeList:
+            ind = nodeList.index(node)*3
             for i, v in enumerate(node.geneCalculationLoad()):
                 self.loadArray[ind+i] = v
-        self.loadArray = np.dot(self.loadArray, self.matrix_constraint)
+        self.loadArray = np.dot(self.loadArray, matrix_setConstraintsToZero)
         # 解出位移矩阵
         self.matrix_deformation = np.dot(np.linalg.inv(
             self.matrix_totalStiffness), self.loadArray)
         self.isCalcultated = True
         # 将变形保存到节点中
-        for node in self.nodeList:
-            ind = self.nodeList.index(node)*3
+        for node in nodeList:
+            ind = nodeList.index(node)*3
             node.solution[self.id] = {
                 'deformation': self.matrix_deformation[ind: ind+3]}
         # 计算单元杆端应力
-        for element in self.elementList:
+        for element in elementList:
             n1s = element.node[0].solution[self.id]
             n2s = element.node[1].solution[self.id]
             elementDeformation = np.concatenate(
