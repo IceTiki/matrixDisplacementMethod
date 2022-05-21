@@ -104,19 +104,23 @@ class Node:
         '''有意义的变量(没有被支座约束且与构件有连接)'''
         return tuple(1 if a and b else 0 for a, b in zip(self.unconstraintComponent, self.bindingComponent))
 
-    def geneCalculationLoad(self):
+    @property
+    def calculationLoad(self):
         '''
         统计单元传来的等效荷载, 以及生成总节点荷载
         '''
         load = self.load
         load_equivalent = [0, 0, 0]
         for element in self.element:
+            '''遍历单元'''
             position = element.node.index(self)
-            nodeEquivalentLoads = [-i for i in element.nodeEquivalentLoads]
+            nodeEquivalentLoads = element.nodeEquivalentLoads
+            # 坐标转换
             nodeEquivalentLoads = np.dot(
-                element.matrix_coordTrans.T, nodeEquivalentLoads)
-            nodeEquivalentLoads = nodeEquivalentLoads.tolist()[
-                0][position*3:position*3+3]
+                element.matrix_coordTrans.T, nodeEquivalentLoads.T)
+            # 将单元对应本节点部分的节点荷载加上
+            nodeEquivalentLoads = nodeEquivalentLoads.T.tolist()
+            nodeEquivalentLoads = nodeEquivalentLoads[0][position*3:position*3+3]
             load_equivalent = [a+b for a,
                                b in zip(load_equivalent, nodeEquivalentLoads)]
         load_calculate = [a+b for a, b in zip(load_equivalent, load)]
@@ -220,9 +224,102 @@ class Element:
         ]
         return np.matrix(matrix)
 
-    @ property
+    @property
     def matrix_elementL(self):
         '''单元坐标系下的单元刚度矩阵'''
+        ea = self.elementEA
+        ei = self.elementEI
+        l = self.length
+        junctions = self.junctions
+        # 轴向
+        if junctions[0] and junctions[3]:
+            k11 = ea/l
+        elif junctions[0] or junctions[3]:
+            k11 = 0
+        else:
+            raise Exception(f'{self}在轴向缺乏约束')
+        # 法向和转角
+        junctionsYT = tuple(junctions[1:3] + junctions[4:6])
+        junctionConditionTY = {
+            (0, 0, 0, 0): '可变',
+            (0, 0, 0, 1): '可变',
+            (0, 0, 1, 0): '可变',
+            (0, 0, 1, 1): '静定',
+            (0, 1, 0, 0): '可变',
+            (0, 1, 0, 1): '可变',
+            (0, 1, 1, 0): '静定',
+            (0, 1, 1, 1): '定固',
+            (1, 0, 0, 0): '可变',
+            (1, 0, 0, 1): '静定',
+            (1, 0, 1, 0): '静定',
+            (1, 0, 1, 1): '铰固',
+            (1, 1, 0, 0): '静定',
+            (1, 1, 0, 1): '固定',
+            (1, 1, 1, 0): '固铰',
+            (1, 1, 1, 1): '固固'
+        }
+        jc = junctionConditionTY[junctionsYT]
+        if jc == '可变':
+            raise Exception('{self}缺乏约束')
+        elif jc == '静定':
+            matrix = [
+                [k11, 0, 0, -k11, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [-k11, 0, 0, k11, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0]
+            ]
+        elif jc == '固固':
+            matrix = [
+                [k11, 0, 0, -k11, 0, 0],
+                [0, 12*ei/l**3, 6*ei/l**2, 0, -12*ei/l**3, 6*ei/l**2],
+                [0, 6*ei/l**2, 4*ei/l, 0, -6*ei/l**2, 2*ei/l],
+                [-k11, 0, 0, k11, 0, 0],
+                [0, -12*ei/l**3, -6*ei/l**2, 0, 12*ei/l**3, -6*ei/l**2],
+                [0, 6*ei/l**2, 2*ei/l, 0, -6*ei/l**2, 4*ei/l]
+            ]
+        elif jc == '固铰':
+            matrix = [
+                [k11, 0, 0, -k11, 0, 0],
+                [0, 3*ei/l**3, 3*ei/l**2, 0, -3*ei/l**3, 0],
+                [0, 3*ei/l**2, 3*ei/l, 0, -3*ei/l**2, 0],
+                [-k11, 0, 0, k11, 0, 0],
+                [0, -3*ei/l**3, -3*ei/l**2, 0, 3*ei/l**3, 0],
+                [0, 0, 0, 0, 0, 0]
+            ]
+        elif jc == '铰固':
+            matrix = [
+                [k11, 0, 0, -k11, 0, 0],
+                [0, 3*ei/l**3, 0, 0, -3*ei/l**2, -3*ei/l**3],
+                [0, 0, 0, 0, 0, 0],
+                [-k11, 0, 0, k11, 0, 0],
+                [0, -3*ei/l**3, 0, 0, 3*ei/l**3, -3*ei/l**2],
+                [0, -3*ei/l**2, 0, 0, 3*ei/l**2, -3*ei/l]
+            ]
+        elif jc == '固定':
+            matrix = [
+                [k11, 0, 0, -k11, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, ei/l, 0, 0, -ei/l],
+                [-k11, 0, 0, k11, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, -ei/l, 0, 0, ei/l]
+            ]
+        elif jc == '定固':
+            matrix = [
+                [k11, 0, 0, -k11, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, ei/l, 0, 0, -ei/l],
+                [-k11, 0, 0, k11, 0, 0],
+                [0, 0, 0, 0, 0, 0],
+                [0, 0, -ei/l, 0, 0, ei/l]
+            ]
+        return matrix
+
+    @ property
+    def matrix_elementL_endsFixed(self):
+        '''单元坐标系下两端固接的单元刚度矩阵'''
         ea = self.elementEA
         ei = self.elementEI
         l = self.length
@@ -246,11 +343,58 @@ class Element:
 
     @ property
     def nodeEquivalentLoads(self):
-        '''节点等效荷载'''
+        '''节点等效荷载(局部坐标系)'''
         q = self.q
         l = self.length
-        nodeEquivalentLoads = [0, -q*l/2, -q*l**2/12, 0, -q*l/2, q*l**2/12]
+        # 假设两端钢结的等效荷载
+        nodeEquivalentLoads = [0, q*l/2, q*l**2/12, 0, q*l/2, -q*l**2/12]
+        #
+        matrix_element = self.matrix_elementL_endsFixed
+        # 根据约束设对应行列为0
+        setZeroMatrix = np.matrix(np.zeros((6, 6)))
+        for i, v in enumerate(self.junctions):
+            if not v:
+                setZeroMatrix[i, i] = 1
+        matrix_element = np.dot(
+            np.dot(setZeroMatrix, matrix_element), setZeroMatrix)
+        # 根据约束将对应主对角线约束设1, 荷载归0
+        for i, v in enumerate(self.junctions):
+            if v:
+                matrix_element[i, i] = 1
+                nodeEquivalentLoads[i] = 0
+        # 解出实际约束条件下的位移
+        nodeDeformation = np.dot(np.linalg.inv(
+            matrix_element), np.array(nodeEquivalentLoads))
+        nodeDeformation = nodeDeformation.reshape((6, 1))
+        # 转换为实际的等效荷载
+        nodeEquivalentLoads = np.dot(
+            self.matrix_elementL_endsFixed, nodeDeformation)
+        nodeEquivalentLoads = nodeEquivalentLoads.reshape((1, 6))
+        nodeEquivalentLoads = np.add(-nodeEquivalentLoads,
+                                     np.array([0, q*l/2, q*l**2/12, 0, q*l/2, -q*l**2/12]))
         return nodeEquivalentLoads
+
+    def misc(self):
+        '''杂项代码堆放堆放'''
+        # 1
+        k11 = 0
+        k22 = 0
+        k23 = 0
+        k26 = 0
+        k32 = 0
+        k62 = 0
+        k33 = 0
+        k63 = 0
+        k36 = 0
+        k66 = 0
+        matrix = [
+            [k11, 0, 0, -k11, 0, 0],
+            [0, k22, k23, 0, -k22, k26],
+            [0, k32, k33, 0, -k32, k36],
+            [-k11, 0, 0, k11, 0, 0],
+            [0, -k22, -k23, 0, k22, -k26],
+            [0, k62, k63, 0, -k62, k66]
+        ]
 
     def __str__(self):
         return f'Element {self.id}'
@@ -372,13 +516,12 @@ class Struction:
         self.loadArray = np.zeros(matrixSize)
         for node in nodeList:
             ind = nodeList.index(node)*3
-            for i, v in enumerate(node.geneCalculationLoad()):
+            for i, v in enumerate(node.calculationLoad):
                 self.loadArray[ind+i] = v
-        self.loadArray = np.dot(self.loadArray, matrix_setConstraintsToZero)
+        self.loadArray = np.dot(matrix_setConstraintsToZero, self.loadArray)
         # 解出位移矩阵
         self.matrix_deformation = np.dot(np.linalg.inv(
             self.matrix_totalStiffness), self.loadArray)
-        self.isCalcultated = True
         # 将变形保存到节点中
         for node in nodeList:
             ind = nodeList.index(node)*3
@@ -397,8 +540,9 @@ class Struction:
                 float(elementForceInLocal[i][0]) for i in range(6)]
             element.solution[self.id] = {'force': elementForceInLocal}
             elementFullForceInLocal = [
-                a+b for a, b in zip(elementForceInLocal, element.nodeEquivalentLoads)]
+                a-b for a, b in zip(elementForceInLocal, element.nodeEquivalentLoads.tolist()[0])]
             element.solution[self.id] = {'fullForce': elementFullForceInLocal}
+        self.isCalcultated = True
         return self
 
     def printImage(self, scale=(0.1, 0.1, 0.1), printForce=(True, True, True), outputType=0, figSize=(10, 10), picOutput=('./pic', 'pdf'), decimal=(2, 2, 2)):
