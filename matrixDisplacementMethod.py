@@ -80,16 +80,17 @@ class Node:
         if self.constraints[1]:
             directionVectors.append((0, 1))
         if len(directionVectors) < 2:
-            raise Exception(f'节点『{self}』缺少来自支座或单元的约束')
-        directionVector_1 = directionVectors[0]
-        for v in directionVectors[1:]:
-            if np.cross(directionVector_1, v) != 0:
-                '''有向量与向量一不平行, 则节点的x, y位移被约束'''
-                junctionConstraints[0] = 1
-                junctionConstraints[1] = 1
-                break
+            pass  # f'节点『{self}』缺少来自支座或单元的约束'
         else:
-            raise Exception(f'节点『{self}』缺少来自支座或单元的约束')
+            directionVector_1 = directionVectors[0]
+            for v in directionVectors[1:]:
+                if np.cross(directionVector_1, v) != 0:
+                    '''有向量与向量一不平行, 则节点的x, y位移被约束'''
+                    junctionConstraints[0] = 1
+                    junctionConstraints[1] = 1
+                    break
+            else:
+                pass  # f'节点『{self}』缺少来自支座或单元的约束'
         return tuple(junctionConstraints)
 
     @property
@@ -208,11 +209,11 @@ class Element:
         '''整体转局部坐标转换矩阵'''
         udx, udy = self.unitVector
         matrix = [
-            [udx, -udy, 0, 0, 0, 0],
-            [udy, udx, 0, 0, 0, 0],
+            [udx, udy, 0, 0, 0, 0],
+            [-udy, udx, 0, 0, 0, 0],
             [0, 0, 1, 0, 0, 0],
-            [0, 0, 0, udx, -udy, 0],
-            [0, 0, 0, udy, udx, 0],
+            [0, 0, 0, udx, udy, 0],
+            [0, 0, 0, -udy, udx, 0],
             [0, 0, 0, 0, 0, 1]
         ]
         return np.matrix(matrix)
@@ -337,12 +338,11 @@ class Element:
     @ property
     def nodeEquivalentLoads(self):
         '''节点等效荷载(局部坐标系)'''
-        qx = self.q[0]
-        qy = self.q[1]
+        qx, qy = self.q
         l = self.length
         # 假设两端钢结的等效荷载
-        nodeEquivalentLoads_0 = [0.5*qx*l, qy*l/2,
-                                 qy*l**2/12, 0.5*qx*l, qy*l/2, -qy*l**2/12]
+        nodeEquivalentLoads_0 = [qx*l/2, qy*l/2,
+                                 qy*l**2/12, qx*l/2, qy*l/2, -qy*l**2/12]
         nodeEquivalentLoads = nodeEquivalentLoads_0.copy()
         #
         matrix_element = self.matrix_elementL_endsFixed
