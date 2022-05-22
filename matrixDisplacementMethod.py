@@ -3,13 +3,6 @@ import math
 
 import constructionPlot
 from liteTools import MathTools, MiscTools
-'''
-本文件定义了三个类, 分别是Node(节点), Element(单元), Struction(结构)。
-依赖关系而言, 单元依赖于节点, 结构依赖于单元与节点。
-    比如单元有一些参数 (比如单元刚度矩阵) 依赖于节点的参数, 但节点的参数不依赖于单元。(节点的等效荷载算是特例, 所以被做成函数)
-'''
-
-# 注意，节点接收等效荷载的时候会反向
 
 
 class Node:
@@ -135,12 +128,12 @@ class Element:
     单元: 单元是两个节点之间的联系
     '''
 
-    def __init__(self, node: tuple[Node, Node], elementEA=10**10, elementEI=1, q=0, junctions=(1, 1, 1, 1, 1, 1)):
+    def __init__(self, node: tuple[Node, Node], elementEA=10**10, elementEI=1, q=(0, 0), junctions=(1, 1, 1, 1, 1, 1)):
         '''
         :params node: tuple[Node, Node]: 单元连接的节点
         :params elementEA: float: 杆件弹性模量和截面面积的乘积
         :params elementEI: float: 杆件弹性模量和轴惯性矩的乘积
-        :params q: float: 均布荷载
+        :params q: tuple[float, float]: 均布荷载(轴向, 法向)
         :params junctions: 单元与节点之间的连接方式,
             分别代表单元端部与节点(x方向, y方向, 转角)是否绑定, 两个节点总共6个项目
         '''
@@ -162,7 +155,7 @@ class Element:
         重设单元参数
         :params elementEA: 单元截面EA
         :params elementEI: 单元截面EI
-        :params q: 均布荷载
+        :params q: tuple[float, float]: 均布荷载(轴向, 法向)
         :params junctions: 单元与节点之间的连接方式,
             分别代表单元端部与节点(x方向, y方向, 转角)是否绑定, 两个节点总共6个项目
         '''
@@ -291,11 +284,11 @@ class Element:
         elif jc == '铰固':
             matrix = [
                 [k11, 0, 0, -k11, 0, 0],
-                [0, 3*ei/l**3, 0, 0, -3*ei/l**2, -3*ei/l**3],
+                [0, 3*ei/l**3, 0, 0, -3*ei/l**3, 3*ei/l**2],
                 [0, 0, 0, 0, 0, 0],
                 [-k11, 0, 0, k11, 0, 0],
                 [0, -3*ei/l**3, 0, 0, 3*ei/l**3, -3*ei/l**2],
-                [0, -3*ei/l**2, 0, 0, 3*ei/l**2, -3*ei/l]
+                [0, 3*ei/l**2, 0, 0, -3*ei/l**2, 3*ei/l]
             ]
         elif jc == '固定':
             matrix = [
@@ -344,10 +337,13 @@ class Element:
     @ property
     def nodeEquivalentLoads(self):
         '''节点等效荷载(局部坐标系)'''
-        q = self.q
+        qx = self.q[0]
+        qy = self.q[1]
         l = self.length
         # 假设两端钢结的等效荷载
-        nodeEquivalentLoads = [0, q*l/2, q*l**2/12, 0, q*l/2, -q*l**2/12]
+        nodeEquivalentLoads_0 = [0.5*qx*l, qy*l/2,
+                                 qy*l**2/12, 0.5*qx*l, qy*l/2, -qy*l**2/12]
+        nodeEquivalentLoads = nodeEquivalentLoads_0.copy()
         #
         matrix_element = self.matrix_elementL_endsFixed
         # 根据约束设对应行列为0
@@ -371,7 +367,7 @@ class Element:
             self.matrix_elementL_endsFixed, nodeDeformation)
         nodeEquivalentLoads = nodeEquivalentLoads.reshape((1, 6))
         nodeEquivalentLoads = np.add(-nodeEquivalentLoads,
-                                     np.array([0, q*l/2, q*l**2/12, 0, q*l/2, -q*l**2/12]))
+                                     np.array(nodeEquivalentLoads_0))
         return nodeEquivalentLoads
 
     def misc(self):
@@ -569,7 +565,7 @@ class Struction:
             if printForce[0]:
                 '''绘制轴力图'''
                 cplot.plotAxialForce(
-                    f[0], element.length, enp[0], enp[1], element.ang)
+                    f[0], -f[3], element.length, enp[0], enp[1], element.ang)
             if printForce[1]:
                 '''绘制剪力图'''
                 cplot.plotShearingForce(
@@ -577,6 +573,6 @@ class Struction:
             if printForce[2]:
                 '''绘制弯矩图'''
                 cplot.plotBendingMoment(
-                    f[2], -f[5], element.q, element.length, enp[0], enp[1], element.ang)
+                    f[2], -f[5], element.q[1], element.length, enp[0], enp[1], element.ang)
         cplot.show()
         return self

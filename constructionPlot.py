@@ -220,17 +220,18 @@ class StructionPlot:
         self.axPlot(self.axes[1], fc, ('#000000', '#0070C0',
                     '#54C1F0'), 'Shearing Force Diagram', self.decimal[1])
 
-    def plotAxialForce(self, n, l, x, y, a):
+    def plotAxialForce(self, n1, n2, l, x, y, a):
         '''
         输入若干参数, 绘制轴力图
-        :param n: 杆件轴力
+        :param n1: 杆件轴力
+        :param n2: 杆件轴力
         :param l: 杆件长度
         :param x: 构件起点x坐标
         :param y: 构件起点y坐标
         :param a: 构件转角(角度)
         :return (x,y): 整体坐标
         '''
-        f = FuncLib.linearFunctionBy2Points(0, n, l, n)
+        f = FuncLib.linearFunctionBy2Points(0, n1, l, n2)
         fc = FunctionCurve(f, 0, l, l/1000).setLocal(x, y, a, self.scale[0])
         self.axPlot(self.axes[0], fc, ('#000000', '#138535',
                     '#6BD089'), 'Axial Force Diagram', self.decimal[0])
