@@ -537,7 +537,9 @@ class Struction:
             element.solution[self.id] = {'force': elementForceInLocal}
             elementFullForceInLocal = [
                 a-b for a, b in zip(elementForceInLocal, element.nodeEquivalentLoads.tolist()[0])]
-            element.solution[self.id] = {'fullForce': elementFullForceInLocal}
+            element.solution[self.id]['fullForce'] = elementFullForceInLocal
+            element.solution[self.id]['q'] = element.q
+
         self.isCalcultated = True
         return self
 
