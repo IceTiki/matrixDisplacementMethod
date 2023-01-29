@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from liteTools import MathTools, MiscTools
+from .liteTools import MathTools, MiscTools
 
 
 class FuncLib:

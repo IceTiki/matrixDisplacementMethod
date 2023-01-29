@@ -1,8 +1,8 @@
 import numpy as np
 import math
 
-import constructionPlot
-from liteTools import MathTools, MiscTools
+from . import constructionPlot
+from .liteTools import MathTools, MiscTools
 
 
 class Node:
