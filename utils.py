@@ -2,6 +2,7 @@ import math
 import random
 import os
 import numpy as np
+import pathlib
 
 
 class MiscTools:
@@ -32,12 +33,10 @@ class MiscTools:
         :params file_type: 文件类型
         :return: 在文件夹里的文件路径元组
         """
-        if not os.path.isdir(folder_dir):
-            os.makedirs(folder_dir)
-        fileDir = []
-        for i in file_name:
-            fileDir.append(os.path.join(folder_dir, f"{i}.{file_type}"))
-        return tuple(fileDir)
+        folder = pathlib.Path(folder_dir)
+        folder.mkdir(parents=True, exist_ok=True)
+        file_dir = tuple(str(folder / f"{i}.{file_type}") for i in file_name)
+        return file_dir
 
 
 class MathTools:
@@ -76,7 +75,9 @@ class MathTools:
         return tuple(arr)
 
     @staticmethod
-    def distance_between_2point(point1: tuple[float, float], point2: tuple[float, float]):
+    def distance_between_2point(
+        point1: tuple[float, float], point2: tuple[float, float]
+    ):
         """计算两点间的间距"""
         delta_x = point2[0] - point1[0]
         delta_y = point2[1] - point1[1]

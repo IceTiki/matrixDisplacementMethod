@@ -2,9 +2,11 @@
 
 **——基于矩阵位移法的二维结构内力图绘制器**
 
-[![Readme Card](https://github-readme-stats.vercel.app/api/pin/?username=IceTiki&repo=matrixDisplacementMethod)](https://github.com/IceTiki/matrixDisplacementMethod)
-
 ![image-20220515190240478](readme.assets/image-20220515190240478.png)
+
+---
+
+[<img src="https://github-readme-stats.vercel.app/api?username=IceTiki&show_icons=true" alt="Readme Card" style="zoom: 80%;" />](https://github.com/IceTiki)[<img src="https://github-readme-stats.vercel.app/api/pin/?username=IceTiki&repo=matrixDisplacementMethod" alt="Readme Card" style="zoom: 104%;" />](https://github.com/IceTiki/matrixDisplacementMethod)
 
 ### 功能
 
