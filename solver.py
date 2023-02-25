@@ -1,8 +1,8 @@
 import numpy as np
 import math
 
-from . import constructionPlot
-from .liteTools import MathTools, MiscTools
+from . import plot
+from .utils import MathTools, MiscTools
 
 
 class Node:
@@ -558,7 +558,7 @@ class Struction:
         if not self.isCalcultated:
             self.calculate()
         # 画图
-        cplot = constructionPlot.StructionPlot(
+        cplot = plot.StructionPlot(
             outputType, figSize=figSize, picOutput=picOutput, scale=scale, decimal=decimal)
         for element in self.elementList:
             '''逐个单元进行绘图'''

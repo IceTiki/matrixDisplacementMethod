@@ -1,1 +1,1 @@
-from .matrixDisplacementMethod import Node, Element, Struction
+from .solver import Node, Element, Struction
