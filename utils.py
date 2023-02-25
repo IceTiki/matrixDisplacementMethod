@@ -8,7 +8,7 @@ class MiscTools:
     numUuid = 0
 
     @staticmethod
-    def geneNumId():
+    def gene_int_uuid():
         """
         分配整数UUID
         """
@@ -16,7 +16,7 @@ class MiscTools:
         return MiscTools.numUuid
 
     @staticmethod
-    def geneId(
+    def gene_word_uuid(
         len_=16, dict_="0123456789qwertyuiopasdfghjklzxcvbnQWERTYUIOPASDFGHJKLZXCVBNM"
     ):
         """
@@ -25,24 +25,24 @@ class MiscTools:
         return str().join(random.choices(dict_, k=len_))
 
     @staticmethod
-    def geneFileFolder(folderDir="./pic", fileName=("a", "b"), fileType="png"):
+    def gene_file_folder(folder_dir="./pic", file_name=("a", "b"), file_type="png"):
         """
-        :params folderDir: 文件夹路径
-        :params fileName: 文件名元组
-        :params fileType: 文件类型
+        :params folder_dir: 文件夹路径
+        :params file_name: 文件名元组
+        :params file_type: 文件类型
         :return: 在文件夹里的文件路径元组
         """
-        if not os.path.isdir(folderDir):
-            os.makedirs(folderDir)
+        if not os.path.isdir(folder_dir):
+            os.makedirs(folder_dir)
         fileDir = []
-        for i in fileName:
-            fileDir.append(os.path.join(folderDir, f"{i}.{fileType}"))
+        for i in file_name:
+            fileDir.append(os.path.join(folder_dir, f"{i}.{file_type}"))
         return tuple(fileDir)
 
 
 class MathTools:
     @staticmethod
-    def uniVector(degrees):
+    def unit_vector(degrees):
         """
         输入角度, 输出单位向量
         :param degrees: 角度
@@ -52,7 +52,7 @@ class MathTools:
         return (math.cos(radians), math.sin(radians))
 
     @staticmethod
-    def geneSequence(a, b, step):
+    def gene_sequence(a, b, step):
         """
         生成等差数列 (范围a~b, 公差为step)
         :param a: 数列首项
@@ -76,16 +76,16 @@ class MathTools:
         return tuple(arr)
 
     @staticmethod
-    def distanceBetweenTwoPoint(p1: tuple[float, float], p2: tuple[float, float]):
+    def distance_between_2point(point1: tuple[float, float], point2: tuple[float, float]):
         """计算两点间的间距"""
-        dx = p2[0] - p1[0]
-        dy = p2[1] - p1[1]
-        return (dx**2 + dy**2) ** (0.5)
+        delta_x = point2[0] - point1[0]
+        delta_y = point2[1] - point1[1]
+        return (delta_x**2 + delta_y**2) ** (0.5)
 
     @staticmethod
-    def findZeroCross(a: np.matrix):
+    def find_zero_cross(a: np.matrix):
         """寻找矩阵中主对角线上的位置, 该位置所处的行列所有元素皆为0"""
-        zeroRow = np.where(~a.any(axis=1))[0]
-        zeroColumn = np.where(~a.any(axis=0))[1]
-        zeroCross = np.intersect1d(zeroRow, zeroColumn)
-        return zeroCross
+        zero_row = np.where(~a.any(axis=1))[0]
+        zero_column = np.where(~a.any(axis=0))[1]
+        zero_cross = np.intersect1d(zero_row, zero_column)
+        return zero_cross

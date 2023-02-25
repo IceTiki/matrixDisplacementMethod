@@ -66,8 +66,8 @@ n4 = Node(position=(3, 1), constraints=(1, 1, 1))
 e1 = Element(node=(n1, n2), q=(0, -100)) # 定义杆件由哪两个节点相连、均布荷载的方向与大小(皆使用笛卡尔坐标系)
 e2 = Element(node=(n2, n3))
 e3 = Element(node=(n3, n4))
-c1 = Struction(firstNode=n1) # 选择结构内的一个节点(通过BFS建立整个结构)
-c1.printImage(outputType=1) # 绘制内力图
+c1 = Struction(first_node=n1) # 选择结构内的一个节点(通过BFS建立整个结构)
+c1.print_image(output_type=1) # 绘制内力图
 ```
 
 ## 开发与原理
