@@ -207,8 +207,8 @@ class Element:
         l = (dx**2 + dy**2) ** (0.5)
         udx = dx / l
         udy = dy / l
-        unitVector = (udx, udy)
-        return unitVector
+        unit_vector = (udx, udy)
+        return unit_vector
 
     @property
     def length(self):
