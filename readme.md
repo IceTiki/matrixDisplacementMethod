@@ -8,15 +8,13 @@
 
 ## 简介
 
-基于矩阵位移法的**平面结构力学求解器**（借助`numpy`和`matplotlib`模块辅助计算和绘图）。[<img align="right" src="https://github-readme-stats.vercel.app/api?username=IceTiki&show_icons=true" alt="Readme Card" style="zoom: 60%;" />](https://github.com/IceTiki)
+基于矩阵位移法的**平面结构力学求解器**（借助`numpy`和`matplotlib`模块辅助计算和绘图）。
 
 只需要使用`节点Node`、`构件Element`、`结构Struction`三个类即可快速组建结构。
 
 在初始化对象时输入结构的相关参数（位置、约束条件、荷载等），即可快速求解并绘图。
 
 ## 详细文档
-[<img align="right" src="https://github-readme-stats.vercel.app/api/pin/?username=IceTiki&repo=matrixDisplacementMethod" alt="Readme Card" style="zoom: 70%;" />](https://github.com/IceTiki/matrixDisplacementMethod)
-
 * [使用文档](docs/使用文档.md)
 * [开发手册](docs/开发手册.md)
 
@@ -57,3 +55,6 @@ c1.print_image(output_type=1) # 绘制内力图(多种输出方式)
 >
 > 各种物理量没有单位，使用前建议将所有物理量的单位统一转换为`N/m`
 
+## 链接
+
+[<img src="https://github-readme-stats.vercel.app/api?username=IceTiki&show_icons=true" alt="Readme Card"/>](https://github.com/IceTiki)[<img src="https://github-readme-stats.vercel.app/api/pin/?username=IceTiki&repo=matrixDisplacementMethod" alt="Readme Card"/>](https://github.com/IceTiki/matrixDisplacementMethod)
