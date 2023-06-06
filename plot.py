@@ -127,7 +127,9 @@ class FunctionCurve:
                 self.extreme_points.append((x, y_1))
             elif delta_y1 * delta_y2 < 0:
                 self.extreme_points.append((x, y_1))
-            elif delta_y1 * delta_y2 == 0 and abs(delta_y1 + delta_y2) > 10 ** (-sensitivity):
+            elif delta_y1 * delta_y2 == 0 and abs(delta_y1 + delta_y2) > 10 ** (
+                -sensitivity
+            ):
                 self.extreme_points.append((x, y_1))
         return self.extreme_points
 
@@ -157,6 +159,7 @@ class StructionPlot:
         img_output=("./pic", "pdf"),
         scale=(0.1, 0.1, 0.1),
         decimal=(2, 2, 2),
+        show_digit=True,
     ):
         """
         :params output_type:
@@ -167,11 +170,13 @@ class StructionPlot:
         :params img_output: 图片保存的位置和类型(如果为None则不保存)
         :param scale: 放大系数(轴力|剪力|弯矩)
         :params decimal: 数据标记精度(轴力|剪力|弯矩)
+        :params show_digit: 是否显示数字
         """
         self.output_type = output_type
         self.img_output = img_output
         self.scale = scale
         self.decimal = decimal
+        self.show_digit = show_digit
         self.figs = []
         self.axes = []
         if output_type == 0:
@@ -275,8 +280,8 @@ class StructionPlot:
             self.decimal[0],
         )
 
-    @staticmethod
     def plot_on_ax(
+        self,
         ax: plt.Axes,
         fc: FunctionCurve,
         color=("#000000", "#085820", "#6BD089"),
@@ -304,7 +309,8 @@ class StructionPlot:
             lx, ly = fc.coord_local_to_global(x, y)
             lx0, ly0 = fc.coord_local_to_global(x, 0)
             ax.plot([lx, lx0], [ly, ly0], color=color[2], alpha=0.5)
-            ax.text(lx, ly, str(round(y, decimal)), color=color[2])
+            if self.show_digit:
+                ax.text(lx, ly, str(round(y, decimal)), color=color[2])
 
     def show(self):
         """

@@ -621,6 +621,7 @@ class Struction:
         fig_size=(10, 10),
         img_output=("./pic", "pdf"),
         decimal=(2, 2, 2),
+        show_digit=True,
     ):
         """
         根据计算结果绘制内力图
@@ -632,6 +633,7 @@ class Struction:
         :params fig_size: 画布大小(单位: 英寸)
         :params img_output: 图片保存的位置和类型(如果为None则不保存)
         :params decimal: 数据标记精度(轴力|剪力|弯矩)
+        :params show_digit: 是否显示数字
         """
         if not self.is_calcultated:
             self.calculate()
@@ -642,6 +644,7 @@ class Struction:
             img_output=img_output,
             scale=scale,
             decimal=decimal,
+            show_digit=show_digit,
         )
         for element in self.element_list:
             """逐个单元进行绘图"""
