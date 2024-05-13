@@ -10,11 +10,37 @@ class Node:
     节点: 节点是结构中突变点(截面性质改变/存在集中荷载/分布荷载突变处)
     """
 
-    def __init__(self, position=(0, 0), constraints=(0, 0, 0), load=(0, 0, 0)):
+    def __init__(
+        self,
+        position: tuple[float, float] = (0, 0),
+        constraints: tuple[bool, bool, bool] = (False, False, False),
+        load: tuple[float, float, float] = (0, 0, 0),
+    ):
         """
-        :params position: Tuple[float, float]: 节点坐标(x, y)
-        :params constraints: Tuple[int, int, int]: 节点被支座约束的分量
-        :params load: Tuple[float, float, float]: 节点荷载(μ, ν, θ)
+        Parameters
+        ---
+        position: tuple[float, float]
+            节点坐标, 对应(x, y)。
+        constraints: tuple[bool, bool, bool]
+            约束, 对应(x, y, θ)。
+            如果为True, 则锁定对应分量, 相当于添加支座约束。
+        load: tuple[float, float, float]
+            节点荷载, 对应(μ, ν, M)。
+
+        Examples
+        ---
+        >>> Node(position=(10, 20), constraints=(True, True, False), load=(0, 0, 10))
+        >>> # 位置为x=10, y=20的节点, 使用固定铰支座 (x与y都被约束), 并在节点上施加了10的力矩。
+
+        >>> Node(position=(10, 20), constraints=(True, True, False), load=(0, 0, 0))
+        >>> # 位置为x=10, y=20的节点, 使用固定支座 (x、y、θ被约束)。
+
+        >>> Node(position=(10, 20), constraints=(True, False, False), load=(0, 10, 0))
+        >>> # 位置为x=10, y=20的节点, 使用x方向活动铰支座 (x被约束), 并在节点上施加了y正方向, 数值为10的力。
+
+        Notes
+        ---
+        坐标与荷载默认皆使用「右手坐标系」, 转角和力矩正方向为「逆时针」。
         """
         # 基本性质
         self.position: tuple[float, float] = position
@@ -142,18 +168,60 @@ class Element:
     def __init__(
         self,
         node: tuple[Node, Node],
-        element_EA=10**10,
-        element_EI=1,
-        q=(0, 0),
-        junctions=(1, 1, 1, 1, 1, 1),
+        element_EA: float = 10**10,
+        element_EI: float = 1,
+        q: tuple[float, float] = (0, 0),
+        junctions: tuple[bool, bool, bool, bool, bool, bool] = (
+            True,
+            True,
+            True,
+            True,
+            True,
+            True,
+        ),
     ):
         """
-        :params node: tuple[Node, Node]: 单元连接的节点
-        :params element_EA: float: 杆件弹性模量和截面面积的乘积
-        :params element_EI: float: 杆件弹性模量和轴惯性矩的乘积
-        :params q: tuple[float, float]: 均布荷载(轴向, 法向)
-        :params junctions: 单元与节点之间的连接方式,
-            分别代表单元端部与节点(x方向, y方向, 转角)是否绑定, 两个节点总共6个项目
+        Parameters
+        ---
+        node: tuple[Node, Node]
+            单元连接的两个节点
+        element_EA: float
+            抗拉刚度, 杆件弹性模量和截面面积的乘积
+        element_EI: float
+            抗弯刚度, 杆件弹性模量和轴惯性矩的乘积
+        q: tuple[float, float]
+            均布荷载 (轴向, 法向)
+            !(很长一段时间没有维护项目了, 下面两行存疑)
+            以第一个节点到第二个节点为轴向正方向。
+            轴向正方向顺时针旋转90度为法向正方向。
+        junctions: tuple[bool, bool, bool, bool, bool, bool]
+            单元与节点的连接方式, 分别代表:
+            !(很长一段时间没有维护项目了, 忘记x, y是局部坐标系还是全局坐标系)
+            (
+                node_1 x方向绑定,
+                node_1 y方向绑定,
+                node_1 θ方向绑定,
+                node_2 x方向绑定,
+                node_2 y方向绑定,
+                node_2 θ方向绑定,
+            )
+
+        Examples
+        ---
+        >>> Element(
+        >>>     node=(node_1, node_2),
+        >>>     junctions=(
+        >>>                   True, True, True, 
+        >>>                   False, True, False
+        >>>               )
+        >>> )
+        >>> # 连接节点node_1和node_2
+        >>> # 与node_1连接方式为刚性连接, 即(x, y, θ)均绑定
+        >>> # 与node_2连接方式为y方向连杆, 即绑定y
+
+        Notes
+        ---
+        坐标与荷载默认皆使用「右手坐标系」, 转角和力矩正方向为「逆时针」。
         """
         # 基本性质
         self.node = node
