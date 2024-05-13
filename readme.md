@@ -87,47 +87,47 @@ Notes
 ### `Element`初始化参数文档
 
 ```python
-        Parameters
-        ---
-        node: tuple[Node, Node]
-            单元连接的两个节点
-        element_EA: float
-            抗拉刚度, 杆件弹性模量和截面面积的乘积
-        element_EI: float
-            抗弯刚度, 杆件弹性模量和轴惯性矩的乘积
-        q: tuple[float, float]
-            均布荷载 (轴向, 法向)
-            !(很长一段时间没有维护项目了, 下面两行存疑)
-            以第一个节点到第二个节点为轴向正方向。
-            轴向正方向顺时针旋转90度为法向正方向。
-        junctions: tuple[bool, bool, bool, bool, bool, bool]
-            单元与节点的连接方式, 分别代表:
-            !(很长一段时间没有维护项目了, 忘记x, y是局部坐标系还是全局坐标系)
-            (
-                node_1 x方向绑定,
-                node_1 y方向绑定,
-                node_1 θ方向绑定,
-                node_2 x方向绑定,
-                node_2 y方向绑定,
-                node_2 θ方向绑定,
-            )
+Parameters
+---
+node: tuple[Node, Node]
+    单元连接的两个节点
+element_EA: float
+    抗拉刚度, 杆件弹性模量和截面面积的乘积
+element_EI: float
+    抗弯刚度, 杆件弹性模量和轴惯性矩的乘积
+q: tuple[float, float]
+    均布荷载 (轴向, 法向)
+    !(很长一段时间没有维护项目了, 下面两行存疑)
+    以第一个节点到第二个节点为轴向正方向。
+    轴向正方向顺时针旋转90度为法向正方向。
+junctions: tuple[bool, bool, bool, bool, bool, bool]
+    单元与节点的连接方式, 分别代表:
+    !(很长一段时间没有维护项目了, 忘记x, y是局部坐标系还是全局坐标系)
+    (
+        node_1 x方向绑定,
+        node_1 y方向绑定,
+        node_1 θ方向绑定,
+        node_2 x方向绑定,
+        node_2 y方向绑定,
+        node_2 θ方向绑定,
+    )
 
-        Examples
-        ---
-        >>> Element(
-        >>>     node=(node_1, node_2),
-        >>>     junctions=(
-        >>>                   True, True, True, 
-        >>>                   False, True, False
-        >>>               )
-        >>> )
-        >>> # 连接节点node_1和node_2
-        >>> # 与node_1连接方式为刚性连接, 即(x, y, θ)均绑定
-        >>> # 与node_2连接方式为y方向连杆, 即绑定y
+Examples
+---
+>>> Element(
+>>>     node=(node_1, node_2),
+>>>     junctions=(
+>>>                   True, True, True, 
+>>>                   False, True, False
+>>>               )
+>>> )
+>>> # 连接节点node_1和node_2
+>>> # 与node_1连接方式为刚性连接, 即(x, y, θ)均绑定
+>>> # 与node_2连接方式为y方向连杆, 即绑定y
 
-        Notes
-        ---
-        坐标与荷载默认皆使用「右手坐标系」, 转角和力矩正方向为「逆时针」。
+Notes
+---
+坐标与荷载默认皆使用「右手坐标系」, 转角和力矩正方向为「逆时针」。
 ```
 
 ## 链接
