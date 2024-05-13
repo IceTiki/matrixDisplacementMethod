@@ -55,6 +55,81 @@ c1.print_image(output_type=1) # 绘制内力图(多种输出方式)
 >
 > 各种物理量没有单位，建议所有物理量的单位统一使用`m`、`s`、`kg`以及其导出单位。
 
+### `Node`初始化参数文档
+
+```python
+Parameters
+---
+position: tuple[float, float]
+    节点坐标, 对应(x, y)。
+constraints: tuple[bool, bool, bool]
+    约束, 对应(x, y, θ)。
+    如果为True, 则锁定对应分量, 相当于添加支座约束。
+load: tuple[float, float, float]
+    节点荷载, 对应(μ, ν, M)。
+
+Examples
+---
+>>> Node(position=(10, 20), constraints=(True, True, False), load=(0, 0, 10))
+>>> # 位置为x=10, y=20的节点, 使用固定铰支座 (x与y都被约束), 并在节点上施加了10的力矩。
+
+>>> Node(position=(10, 20), constraints=(True, True, False), load=(0, 0, 0))
+>>> # 位置为x=10, y=20的节点, 使用固定支座 (x、y、θ被约束)。
+
+>>> Node(position=(10, 20), constraints=(True, False, False), load=(0, 10, 0))
+>>> # 位置为x=10, y=20的节点, 使用x方向活动铰支座 (x被约束), 并在节点上施加了y正方向, 数值为10的力。
+
+Notes
+---
+坐标与荷载默认皆使用「右手坐标系」, 转角和力矩正方向为「逆时针」。
+```
+
+### `Element`初始化参数文档
+
+```python
+        Parameters
+        ---
+        node: tuple[Node, Node]
+            单元连接的两个节点
+        element_EA: float
+            抗拉刚度, 杆件弹性模量和截面面积的乘积
+        element_EI: float
+            抗弯刚度, 杆件弹性模量和轴惯性矩的乘积
+        q: tuple[float, float]
+            均布荷载 (轴向, 法向)
+            !(很长一段时间没有维护项目了, 下面两行存疑)
+            以第一个节点到第二个节点为轴向正方向。
+            轴向正方向顺时针旋转90度为法向正方向。
+        junctions: tuple[bool, bool, bool, bool, bool, bool]
+            单元与节点的连接方式, 分别代表:
+            !(很长一段时间没有维护项目了, 忘记x, y是局部坐标系还是全局坐标系)
+            (
+                node_1 x方向绑定,
+                node_1 y方向绑定,
+                node_1 θ方向绑定,
+                node_2 x方向绑定,
+                node_2 y方向绑定,
+                node_2 θ方向绑定,
+            )
+
+        Examples
+        ---
+        >>> Element(
+        >>>     node=(node_1, node_2),
+        >>>     junctions=(
+        >>>                   True, True, True, 
+        >>>                   False, True, False
+        >>>               )
+        >>> )
+        >>> # 连接节点node_1和node_2
+        >>> # 与node_1连接方式为刚性连接, 即(x, y, θ)均绑定
+        >>> # 与node_2连接方式为y方向连杆, 即绑定y
+
+        Notes
+        ---
+        坐标与荷载默认皆使用「右手坐标系」, 转角和力矩正方向为「逆时针」。
+```
+
 ## 链接
 
 [<img src="https://github-readme-stats.vercel.app/api?username=IceTiki&show_icons=true" alt="Readme Card"/>](https://github.com/IceTiki)[<img src="https://github-readme-stats.vercel.app/api/pin/?username=IceTiki&repo=matrixDisplacementMethod" alt="Readme Card"/>](https://github.com/IceTiki/matrixDisplacementMethod)
